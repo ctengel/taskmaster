@@ -12,7 +12,7 @@ class Item:
         if isinstance(timelines, dict):
             for k, v in timelines.items():
                 self.add_schedule(k, v)
-        else:
+        elif timelines:
             for timeline in timelines:
                 self.add_schedule(timeline[0], timeline[1])
 
