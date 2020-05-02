@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import tm
-import pprint
+"""Add item from CLI to a shelved List object"""
+
 import shelve
 import sys
 
@@ -12,4 +12,3 @@ mylist.add_item(sys.argv[1])
 
 with shelve.open('test.pyshelve') as shelf:
     shelf['test'] = mylist
-
