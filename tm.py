@@ -66,7 +66,7 @@ class List:
         for item in items:
             self.add_item(item)
 
-    def __init__(self, title, csvfile=None, items=None, defyear=None):
+    def __init__(self, title, csvfile=None, items=None, defyear=None, simpcsv=None):
         self.title = title
         self.items = []
         self.timelines = []
@@ -77,15 +77,40 @@ class List:
         if items:
             self.add_items(items)
         if csvfile:
-            self.import_csv(csvfile)
+            self.import_csv(csvfile, simpcsv)
 
-    def import_csv(self, csvfile):
+    def import_csv(self, csvfile, simpcsv=None):
         """Import a CSV file into this list"""
+        # TODO handle simple with abstract timelines more natively?
         reader = csv.DictReader(csvfile)
+        if simpcsv:
+            guide = self.import_trans(simpcsv)
         for row in reader:
             item = row.pop('Item')
+            notes = row.pop('Notes', None)
+            if notes:
+                # TODO make this a 1st class citizen
+                item = item + '\n' + notes
+            if row.pop('Compl'):
+                # TODO pull in  complete stuff also?
+                continue
             cat = row.pop('Cat')
-            self.add_item(item, cat, row)
+            if simpcsv:
+                tl = guide[row['When']]
+                pri = row['Pri']
+                self.add_item(Item(what=item, category=cat, timelines=[(tl, pri)], lst=self))
+            else:
+                self.add_item(item, cat, row)
+
+    def import_trans(self, trcsv):
+        """Bring in translation timelines"""
+        reader = csv.DictReader(trcsv)
+        ret = {}
+        for row in reader:
+            timeline = Timeline(row['End'])
+            self.add_timeline(timeline)
+            ret[row['When']] = timeline
+        return ret
 
     def get_timelines(self):
         """Return list of all Timeline objects"""
