@@ -1,8 +1,7 @@
+"""Task Master Client Library"""
 
 import requests
-#import json_api_doc
 
-#CT = 'application/vnd.api+json'
 
 class TMApi:
     def __init__(self, url):
