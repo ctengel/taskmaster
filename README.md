@@ -73,3 +73,13 @@ Tags:
 * TID
 * type - source, context, project, goal, assignee
 * value
+
+Filters
+=======
+* all/None
+* open (all but closed)
+* triage (triage/new; some asleep, wake, warm)
+* schedule (triage/new; schedule)
+* stage (awake, warm)
+* execute (warm)
+* closed (closed)

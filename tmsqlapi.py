@@ -28,7 +28,8 @@ task = api.model('Task', {'id': flask_restx.fields.Integer(readonly=True, descri
     'wakeup': flask_restx.fields.DateTime(description='When a task should be staged or slept until'),
     'warm': flask_restx.fields.Boolean(description='Actively in execution'),
     'pomodoros': flask_restx.fields.Integer(description='How long it take'),
-    'priority': flask_restx.fields.Integer(description='Priority')
+    'priority': flask_restx.fields.Integer(description='Priority'),
+    'mode': flask_restx.fields.String(readonly=True, description='Primary mode')
     })
 
 action = api.model('Action', {'close': flask_restx.fields.Boolean(description='Close task', default=False), 'duplicate': flask_restx.fields.Boolean(description='Duplicate task', default=False)})
@@ -59,6 +60,61 @@ class Task(db.Model):
     # TODO due??? handle overdue???
 
 
+def taskmode(mytask, upper=None):
+    """Determine mode field
+
+    Also verify that it belongs in 'upper' mode list
+    """
+    assert upper in [None, 'all', 'open', 'triage', 'schedule', 'stage', 'execute', 'closed']
+    mode = None
+    if mytask.closed is not None:
+        mode = 'closed'
+        assert upper in [None, 'all', 'closed']
+    elif mytask.warm == True:
+        mode = 'warm'
+        assert upper in [None, 'all', 'open', 'execute', 'stage', 'triage']
+    elif mytask.wakeup and mytask.wakeup <= datetime.datetime.now():
+        mode = 'awake'
+        assert upper in [None, 'all', 'open', 'stage', 'triage']
+    elif mytask.wakeup and mytask.wakeup > datetime.datetime.now():
+        mode = 'asleep'
+        assert upper in [None, 'all', 'open', 'triage']
+    elif mytask.pomodoros is not None and mytask.urgent is not None and mytask.important is not None:
+        mode = 'schedule'
+        assert upper in [None, 'all', 'open', 'schedule', 'triage']
+    else:
+        mode = 'triage'
+        assert upper not in ['stage', 'execute', 'closed']
+    assert mode
+    if not upper or upper == 'all':
+        return mode
+    if upper == 'closed':
+        assert mode == 'closed'
+    if upper == 'open':
+        assert mode != 'closed'
+    if upper == 'execute':
+        assert mode == 'warm'
+    if upper == 'stage':
+        assert mode in ['warm', 'awake']
+    if upper == 'schedule':
+        assert mode in ['schedule', 'triage']
+    if upper == 'triage':
+        assert mode not in ['closed', 'schedule']
+
+
+
+def mode_one(mytask, upper=None):
+    """Add mode field to one task"""
+    onemode = taskmode(mytask, upper)
+    onedict = dict(mytask.__dict__)
+    onedict['mode'] = onemode
+    return onedict
+
+def mode_many(mytasks, upper=None):
+    """Add mode field to many tasks"""
+    return [mode_one(x, upper) for x in mytasks]
+
+
 @taskns.route('/')
 class TaskList(flask_restx.Resource):
     # TODO swagger document mode param
@@ -71,24 +127,24 @@ class TaskList(flask_restx.Resource):
         mymo = args['mode']
         assert mymo
         if mymo == 'all':
-            return Task.query.all()
+            return mode_many(Task.query.all(), 'all')
         if mymo == 'open':
-            return Task.query.filter_by(closed=None).all()
+            return mode_many(Task.query.filter_by(closed=None).all(), 'open')
         if mymo == 'closed':
-            return Task.query.filter(Task.closed != None).order_by(Task.closed.desc()).all()
+            return mode_many(Task.query.filter(Task.closed != None).order_by(Task.closed.desc()).all(), 'closed')
         if mymo == 'execute':
-            return Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority).all()
+            return mode_many(Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority).all(), 'execute')
         if mymo == 'stage':
             # TODO should this include warm?
-            return Task.query.filter(Task.closed == None, Task.wakeup <= datetime.datetime.now()).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all()
+            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= datetime.datetime.now()).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage')
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
             # TODO bulk reschedule option?
-            return Task.query.filter(Task.closed == None, Task.warm == False, Task.wakeup == None).order_by(Task.important.desc(), Task.urgent.desc()).all()
+            return mode_many(Task.query.filter(Task.closed == None, Task.warm == False, Task.wakeup == None).order_by(Task.important.desc(), Task.urgent.desc()).all(), 'schedule')
         if mymo == 'triage':
             # TODO look for missing tags here
-            return Task.query.filter(Task.closed == None, ((Task.pomodoros == None) | (Task.urgent == None) | (Task.important == None))).all()
+            return mode_many(Task.query.filter(Task.closed == None, ((Task.pomodoros == None) | (Task.urgent == None) | (Task.important == None))).all(), 'triage')
         assert False
 
     @taskns.doc('create_task')
@@ -99,7 +155,7 @@ class TaskList(flask_restx.Resource):
         newtask = Task(**api.payload)
         db.session.add(newtask)
         db.session.commit()
-        return newtask, 201
+        return mode_one(newtask), 201
 
 
 @taskns.route('/<int:id>')
@@ -109,7 +165,7 @@ class TodoOne(flask_restx.Resource):
     @taskns.doc('get_task')
     @taskns.marshal_with(task)
     def get(self, id):
-        return Task.query.get_or_404(id)
+        return mode_one(Task.query.get_or_404(id))
 
     @taskns.doc('put_task')
     @taskns.expect(task)
@@ -124,7 +180,7 @@ class TodoOne(flask_restx.Resource):
             else:
                 flask_restx.abort(403)
         db.session.commit()
-        return mytask
+        return mode_one(mytask)
 
 
 @taskns.route('/<int:id>/action')
@@ -146,9 +202,9 @@ class TodoAction(flask_restx.Resource):
             mytask.closed = datetime.datetime.now()
         db.session.commit()
         if newtask:
-            return [mytask, newtask]
+            return [mode_one(mytask), mode_one(newtask)]
         else:
-            return [mytask]
+            return [mode_one(mytask)]
         
 
 
