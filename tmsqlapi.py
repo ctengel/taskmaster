@@ -100,6 +100,7 @@ def taskmode(mytask, upper=None):
         assert mode in ['schedule', 'triage']
     if upper == 'triage':
         assert mode not in ['closed', 'schedule']
+    return mode
 
 
 

@@ -42,7 +42,7 @@ class Task:
         self.update({'wakeup': when.isoformat()})
     
     def __repr__(self):
-        return 'Task({}, {}, {})'.format(self.tid, self.api.url, self.dct['mode'], self.dct['name'])
+        return 'Task({}, {}, {}, {})'.format(self.tid, self.api.url, self.dct['mode'], self.dct['name'])
 
 
 class TMApi:
