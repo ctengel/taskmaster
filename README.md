@@ -3,6 +3,8 @@ TaskMaster
 
 Master your tasks
 
+See `legacy` for an old CSV/pyshelve type thing.  The new stuff is all SQL DB with RESTful API.
+
 API
 ---
 
