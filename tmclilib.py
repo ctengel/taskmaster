@@ -1,5 +1,6 @@
 """Task Master Client Library"""
 
+import datetime
 import requests
 
 
@@ -16,8 +17,9 @@ class Task:
 
     def export(self):
         """Dictionary representation"""
+        # TODO convert to datetime here!
         return self.dct
- 
+
     def close(self):
         """Close this task"""
         # TODO duplicate... return if so
@@ -40,6 +42,14 @@ class Task:
         """Set a schedule"""
         # TODO allow NOW... or server side
         self.update({'wakeup': when.isoformat()})
+
+    def getsched(self):
+        """Get datetime object corresponding to wakeup"""
+        # TODO this should just be native
+        if not self.dct['wakeup']:
+            return None
+        return datetime.datetime.fromisoformat(self.dct['wakeup'])
+
 
     def __repr__(self):
         return 'Task({}, {}, {}, {})'.format(self.tid,
