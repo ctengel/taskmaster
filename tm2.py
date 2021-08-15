@@ -19,16 +19,21 @@ def dateornull(dateobj=None, abbrev=False):
         return None
     return dateobj.isoformat()
 
+def taskstr(tsk):
+    """String representation of a task"""
+    exp = tsk.export()
+    return '{}\t{}\t{}\t{}\t{}'.format(exp['mode'].upper(),
+                                       tsk.uif(),
+                                       exp['pomodoros'],
+                                       dateornull(tsk.getsched(), abbrev=True),
+                                       exp['name'])
+
 def taskchoice(objlist):
     """Given a list of task objects, show them and let a user pick one - return the object"""
     # TODO multiple
     # TODO search all
     # TODO allow "new"
-    choices = ['{}\t{}\t{}\t{}\t{}'.format(x.export()['mode'].upper(),
-                                           x.uif(),
-                                           x.export()['pomodoros'],
-                                           dateornull(x.getsched(), abbrev=True),
-                                           x.export()['name']) for x in objlist]
+    choices = [taskstr(x) for x in objlist]
     print(list(enumerate(choices)))
     choice = inquirer.list_input('pick a task', choices=[(x[1], x[0]) for x in enumerate(choices)])
     return objlist[choice]
@@ -159,11 +164,19 @@ def execute(ctx):
     """Close tasks"""
     mainloop(ctx.obj['API'], mode='execute')
 
-# see #22
-#@cli.command()
-#@click.pass_context
-#def print(ctx):
-#    pass
+
+@cli.command()
+@click.pass_context
+@click.option('-u', '--until')
+# TODO allow actual direct to printer
+# TODO allow other modes besides stage
+def paper(ctx, until):
+    utl = None
+    if until:
+        utl = datetime.datetime.fromisoformat(until)
+    tasklist = ctx.obj['API'].all_tasks(mode='stage', until=utl)
+    for tsk in tasklist:
+        print(taskstr(tsk))
 
 # see #20
 #@cli.command()

@@ -96,7 +96,7 @@ class TMApi:
         """
         return Task(self, self.post('tasks/', td))
 
-    def all_tasks(self, mode=None):
+    def all_tasks(self, mode=None, until=None):
         """Return all Task objects
 
         mode corresponds to server mode
@@ -104,6 +104,8 @@ class TMApi:
         params = None
         if mode:
             params = {'mode': mode}
+            if until:
+                params['until'] = until.isoformat()
         return [Task(self, x) for x in self.get('tasks/', params)]
 
     def one_task(self, tid):

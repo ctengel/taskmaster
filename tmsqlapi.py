@@ -123,7 +123,11 @@ class TaskList(flask_restx.Resource):
     @taskns.marshal_list_with(task)
     def get(self):
         parser = flask_restx.reqparse.RequestParser() # TODO better way to call this?
+        # TODO document these options
         parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed'), default='open')
+        parser.add_argument('until', type=flask_restx.inputs.datetime_from_iso8601)
+        # TODO support just date only
+        # TODO support for status report "since"
         args = parser.parse_args()
         mymo = args['mode']
         assert mymo
@@ -137,7 +141,10 @@ class TaskList(flask_restx.Resource):
             return mode_many(Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority).all(), 'execute')
         if mymo == 'stage':
             # TODO should this include warm?
-            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= datetime.datetime.now()).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage')
+            comprar = datetime.datetime.now()
+            if args['until']:
+                comprar = args['until']
+            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= comprar).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage')
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
