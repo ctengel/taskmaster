@@ -3,3 +3,4 @@ __pycache__
 *.db
 *.pyshelve
 *.swp
+my.cfg

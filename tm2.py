@@ -126,18 +126,34 @@ def cli(ctx, api):
 
 @cli.command()
 @click.pass_context
-def new(ctx):
+@click.option('-f', '--file', type=click.File())
+@click.option('-w',  '--wakeup')
+@click.argument('task', nargs=-1)
+def new(ctx, file, wakeup, task):
     """Add a task from standard input"""
-    # TODO allow specifying task on CLI
+    assert not (task and file)
+    if not (task or file):
+        assert not wakeup
+    # TODO wakeup as datetime not string
+    if file:
+        # TODO more enhanced file analysis
+        for one in file:
+            taskobj = ctx.obj['API'].new_task({'name': one.strip(), 'wakeup': wakeup})
+            print(taskobj.export())
+        return
+    if task:
+        taskobj = ctx.obj['API'].new_task({'name': ' '.join(task), 'wakeup': wakeup})
+        print(taskobj.export())
+        return
     while True:
         taskname = inquirer.text(message='task')
         taskobj = ctx.obj['API'].new_task({'name': taskname})
         print(taskobj.export())
 
-# see #13
+# see #48
 #@cli.command()
 #@click.pass_context
-#def import(ctx):
+#def reimport(ctx):
 #    pass
 
 @cli.command()
@@ -171,6 +187,7 @@ def execute(ctx):
 # TODO allow actual direct to printer
 # TODO allow other modes besides stage
 def paper(ctx, until):
+    """Noninteractive printable list of tasks"""
     utl = None
     if until:
         utl = datetime.datetime.fromisoformat(until)

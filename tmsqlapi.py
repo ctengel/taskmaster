@@ -59,11 +59,13 @@ class Task(db.Model):
     # TODO due??? handle overdue???
 
 
-def taskmode(mytask, upper=None):
+def taskmode(mytask, upper=None, fut=None):
     """Determine mode field
 
     Also verify that it belongs in 'upper' mode list
     """
+    if not fut:
+        fut = datetime.datetime.now()
     assert upper in [None, 'all', 'open', 'triage', 'schedule', 'stage', 'execute', 'closed']
     mode = None
     if mytask.closed is not None:
@@ -72,10 +74,10 @@ def taskmode(mytask, upper=None):
     elif mytask.warm == True:
         mode = 'warm'
         assert upper in [None, 'all', 'open', 'execute', 'stage', 'triage']
-    elif mytask.wakeup and mytask.wakeup <= datetime.datetime.now():
+    elif mytask.wakeup and mytask.wakeup <= fut:
         mode = 'awake'
         assert upper in [None, 'all', 'open', 'stage', 'triage']
-    elif mytask.wakeup and mytask.wakeup > datetime.datetime.now():
+    elif mytask.wakeup and mytask.wakeup > fut:
         mode = 'asleep'
         assert upper in [None, 'all', 'open', 'triage']
     elif mytask.pomodoros is not None and mytask.urgent is not None and mytask.important is not None:
@@ -103,16 +105,16 @@ def taskmode(mytask, upper=None):
 
 
 
-def mode_one(mytask, upper=None):
+def mode_one(mytask, upper=None, fut=None):
     """Add mode field to one task"""
-    onemode = taskmode(mytask, upper)
+    onemode = taskmode(mytask, upper, fut=fut)
     onedict = dict(mytask.__dict__)
     onedict['mode'] = onemode
     return onedict
 
-def mode_many(mytasks, upper=None):
+def mode_many(mytasks, upper=None, fut=None):
     """Add mode field to many tasks"""
-    return [mode_one(x, upper) for x in mytasks]
+    return [mode_one(x, upper, fut=fut) for x in mytasks]
 
 
 @taskns.route('/')
@@ -143,7 +145,7 @@ class TaskList(flask_restx.Resource):
             comprar = datetime.datetime.now()
             if args['until']:
                 comprar = args['until']
-            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= comprar).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage')
+            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= comprar).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage', fut=comprar)
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
@@ -159,7 +161,11 @@ class TaskList(flask_restx.Resource):
     @taskns.marshal_with(task, code=201)
     def post(self):
         # TODO restrict
-        newtask = Task(**api.payload)
+        indict = dict(api.payload)
+        # TODO merge with PUT code
+        if indict.get('wakeup'):
+            indict['wakeup'] = datetime.datetime.fromisoformat(indict['wakeup'])
+        newtask = Task(**indict)
         db.session.add(newtask)
         db.session.commit()
         return mode_one(newtask), 201
