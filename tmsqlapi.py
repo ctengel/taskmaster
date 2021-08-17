@@ -8,8 +8,7 @@ import flask_sqlalchemy
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
-app.config['DEBUG'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/tmsql.db'
+app.config.from_envvar('TMSQLAPI_SETTINGS', silent=True)
 db = flask_sqlalchemy.SQLAlchemy(app)
 
 api = flask_restx.Api(app, version='0.1', title='TaskMaster API', description='API for interacting with a TaskMaster DB')#, validate=True) TODO validate

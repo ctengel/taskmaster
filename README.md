@@ -59,7 +59,7 @@ A key new concept here is the idea of "modes" - we don't want to see all our tas
    * status report
 
 DB
-==
+--
 Main:
 * id
 * Name
@@ -77,7 +77,7 @@ Tags:
 * value
 
 Filters
-=======
+-------
 * all/None
 * open (all but closed)
 * triage (triage/new; some asleep, wake, warm)
@@ -85,3 +85,9 @@ Filters
 * stage (awake, warm)
 * execute (warm)
 * closed (closed)
+
+How to
+------
+
+* Run the API: `$ TMSQLAPI_SETTINGS=sample.cfg python tmsqlapi.py`
+* Run the Client: `$ ./tm2.py -a http://127.0.0.1:5000/ new`
