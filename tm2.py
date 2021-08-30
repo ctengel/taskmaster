@@ -22,7 +22,7 @@ def dateornull(dateobj=None, abbrev=False):
 def taskstr(tsk):
     """String representation of a task"""
     exp = tsk.export()
-    return '{}\t{}\t{}\t{}\t{}'.format(exp['mode'].upper(),
+    return '{: <8}  {}  {: >4}  {}  {}'.format(exp['mode'].upper(),
                                        tsk.uif(),
                                        exp['pomodoros'],
                                        dateornull(tsk.getsched(), abbrev=True),
@@ -33,8 +33,8 @@ def taskchoice(objlist):
     # TODO multiple
     # TODO search all
     # TODO allow "new"
+    # TODO allow exit
     choices = [taskstr(x) for x in objlist]
-    print(list(enumerate(choices)))
     choice = inquirer.list_input('pick a task', choices=[(x[1], x[0]) for x in enumerate(choices)])
     return objlist[choice]
 
@@ -80,18 +80,18 @@ def scheduleone(tobj):
     # TODO - THIRD LEVEL -  pull common times
 
 
+def taskact(mychoice, default=None):
+    """Given an existing task object, let the user do something
 
-def mainloop(api, mode=None):
-    """Loop through a single mode"""
+    Allows multiple actions until cancel
+    """
     while True:
-        tasklist = api.all_tasks(mode=mode)
-        mychoice = taskchoice(tasklist)
         print(mychoice.export())
 
         # TODO take into account current status of the task itself to determine default
         action = inquirer.list_input('action',
-                                     choices=['triage', 'schedule', 'stage', 'execute'],
-                                     default=mode)
+                                     choices=['triage', 'schedule', 'stage', 'execute', 'exit'],
+                                     default=default)
 
         if action == 'triage':
             triageone(mychoice)
@@ -104,12 +104,21 @@ def mainloop(api, mode=None):
             if inquirer.confirm('Close this task?'):
                 # TODO duplicate, etc
                 mychoice.close()
+        elif action == 'exit':
+            return
         else:
             assert False
 
         # TODO set priority/order
-        # TODO set priority/order
         # TODO set Frog
+
+
+def mainloop(api, mode=None):
+    """Loop through a single mode"""
+    while True:
+        tasklist = api.all_tasks(mode=mode)
+        mychoice = taskchoice(tasklist)
+        taskact(mychoice, mode)
 
 
 @click.group()
@@ -148,7 +157,7 @@ def new(ctx, file, wakeup, task):
     while True:
         taskname = inquirer.text(message='task')
         taskobj = ctx.obj['API'].new_task({'name': taskname})
-        print(taskobj.export())
+        taskact(taskobj, 'exit')
 
 # see #48
 #@cli.command()
