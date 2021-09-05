@@ -36,10 +36,9 @@ def taskchoice(objlist):
     # TODO allow exit
     choices = [taskstr(x) for x in objlist]
     # TODO default=next one
-    choice = inquirer.list_input('pick a task',
-                                 choices=[(x[1], x[0]) for x in enumerate(choices)],
-                                 carousel=True)
-    return objlist[choice]
+    choice = inquirer.checkbox('pick a task',
+                               choices=[(x[1], x[0]) for x in enumerate(choices)])
+    return [objlist[x] for x in choice]
 
 def tupdate(taskobj, updatedct, confirm=True):
     """Update a task, optionally confirming choices"""
@@ -59,14 +58,18 @@ def triageone(tobj):
                  inquirer.Text('pomodoros', message='How many poms?')] # TODO validate
     answers = inquirer.prompt(questions)
     answers['pomodoros'] = int(answers['pomodoros'])
-    tupdate(tobj, answers)
+    for tsk in tobj:
+        tupdate(tsk, answers)
 
 def scheduleone(tobj):
     """Schedule one object"""
-    currsched = tobj.getsched()
+    currsched = None
+    if len(tobj) == 1:
+        currsched = tobj[0].getsched()
     # TODO  pull common times - see #36
     # TODO add weekend, weekday, etc
     # TODO saner defaults and options (i.e. don't suggest this afternoon if already begun)
+    # TODO friendlier display of options - see https://github.com/magmax/python-inquirer/blob/master/examples/list_tagged.py
     options = [None,
                currsched,
                datetime.datetime.now(),
@@ -86,9 +89,10 @@ def scheduleone(tobj):
     if not isinstance(newsched, datetime.datetime):
         newsched = datetime.datetime.combine(newsched,
                                              datetime.time.fromisoformat(inquirer.text(message='time')))
-    if currsched != newsched:
-        # TODO confirm
-        tobj.schedule(newsched)
+    for tsk in tobj:
+        if tsk.getsched() != newsched:
+            # TODO confirm
+            tsk.schedule(newsched)
 
 
 def taskact(mychoice, default=None):
@@ -97,7 +101,8 @@ def taskact(mychoice, default=None):
     Allows multiple actions until cancel
     """
     while True:
-        print(mychoice.export())
+        for tsk in mychoice:
+            print(tsk.export())
 
         # TODO take into account current status of the task itself to determine default
         action = inquirer.list_input('action',
@@ -113,12 +118,20 @@ def taskact(mychoice, default=None):
             default = 'exit'
         elif action == 'stage':
             # TODO more intuitive warm/unwarm, confirm, etc
-            mychoice.warm(un=mychoice.export()['warm'])
+            base = None
+            for tsk in mychoice:
+                if base is None:
+                    base = tsk.export()['warm']
+                elif base != tsk.export(['warm']):
+                    print('Can only stage or unstage, not both')
+            for tsk in mychoice:
+                tsk.warm(un=base)
             default = 'exit'
         elif action == 'execute':
             if inquirer.confirm('Close this task?'):
-                # TODO duplicate, etc
-                mychoice.close()
+                for tsk in mychoice:
+                    # TODO duplicate, etc
+                    tsk.close()
                 return
         elif action == 'exit':
             return
