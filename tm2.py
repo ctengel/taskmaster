@@ -24,7 +24,7 @@ def taskstr(tsk):
     exp = tsk.export()
     return '{: <8}  {}  {: >4}  {}  {}'.format(exp['mode'].upper(),
                                        tsk.uif(),
-                                       exp['pomodoros'],
+                                       str(exp['pomodoros']),
                                        dateornull(tsk.getsched(), abbrev=True),
                                        exp['name'])
 
@@ -35,7 +35,10 @@ def taskchoice(objlist):
     # TODO allow "new"
     # TODO allow exit
     choices = [taskstr(x) for x in objlist]
-    choice = inquirer.list_input('pick a task', choices=[(x[1], x[0]) for x in enumerate(choices)])
+    # TODO default=next one
+    choice = inquirer.list_input('pick a task',
+                                 choices=[(x[1], x[0]) for x in enumerate(choices)],
+                                 carousel=True)
     return objlist[choice]
 
 def tupdate(taskobj, updatedct, confirm=True):
@@ -46,7 +49,7 @@ def tupdate(taskobj, updatedct, confirm=True):
         if not choice:
             return
     taskobj.update(updatedct)
-    print(taskobj.export())
+    #print(taskobj.export())
 
 def triageone(tobj):
     """Triage one object"""
@@ -61,23 +64,31 @@ def triageone(tobj):
 def scheduleone(tobj):
     """Schedule one object"""
     currsched = tobj.getsched()
-    newsched = datetime.datetime.fromisoformat(inquirer.text(message='date',
-                                                             default=dateornull(currsched)))
+    # TODO  pull common times - see #36
+    # TODO add weekend, weekday, etc
+    # TODO saner defaults and options (i.e. don't suggest this afternoon if already begun)
+    options = [None,
+               currsched,
+               datetime.datetime.now(),
+               datetime.datetime.now() + datetime.timedelta(hours=1),
+               datetime.date.today(),
+               datetime.datetime.combine(datetime.date.today(),
+                                         datetime.time(hour=12)),
+               datetime.date.today() + datetime.timedelta(days=1),
+               datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
+                                         datetime.time(hour=6))]
+    newsched = inquirer.list_input('date', choices=options, carousel=True)
+    if not newsched:
+        # TODO ask again if not valid
+        # TODO allow date only
+        newsched = datetime.datetime.fromisoformat(inquirer.text(message='date',
+                                                                 default=dateornull(currsched)))
+    if not isinstance(newsched, datetime.datetime):
+        newsched = datetime.datetime.combine(newsched,
+                                             datetime.time.fromisoformat(inquirer.text(message='time')))
     if currsched != newsched:
         # TODO confirm
         tobj.schedule(newsched)
-    # TODO - second level - allow user to pick from a list:
-    #           current schedule
-    #           now
-    #           plus 1 hour
-    #           plus one day
-    #           afternoon
-    #           weekend
-    #           weekday
-    #           etc from each
-    #   default: current or NOW, order by time
-    #   then ask for hour specify; default is what is assoc with choice, or NULL
-    # TODO - THIRD LEVEL -  pull common times
 
 
 def taskact(mychoice, default=None):
@@ -91,19 +102,24 @@ def taskact(mychoice, default=None):
         # TODO take into account current status of the task itself to determine default
         action = inquirer.list_input('action',
                                      choices=['triage', 'schedule', 'stage', 'execute', 'exit'],
-                                     default=default)
+                                     default=default,
+                                     carousel=True)
 
         if action == 'triage':
             triageone(mychoice)
+            default = 'schedule'
         elif action == 'schedule':
             scheduleone(mychoice)
+            default = 'exit'
         elif action == 'stage':
             # TODO more intuitive warm/unwarm, confirm, etc
             mychoice.warm(un=mychoice.export()['warm'])
+            default = 'exit'
         elif action == 'execute':
             if inquirer.confirm('Close this task?'):
                 # TODO duplicate, etc
                 mychoice.close()
+                return
         elif action == 'exit':
             return
         else:
@@ -157,7 +173,7 @@ def new(ctx, file, wakeup, task):
     while True:
         taskname = inquirer.text(message='task')
         taskobj = ctx.obj['API'].new_task({'name': taskname})
-        taskact(taskobj, 'exit')
+        taskact(taskobj, 'triage')
 
 # see #48
 #@cli.command()
