@@ -106,7 +106,7 @@ def taskact(mychoice, default=None):
 
         # TODO take into account current status of the task itself to determine default
         action = inquirer.list_input('action',
-                                     choices=['triage', 'schedule', 'stage', 'execute', 'exit'],
+                                     choices=['triage', 'schedule', 'stage', 'execute', 'modify', 'exit'],
                                      default=default,
                                      carousel=True)
 
@@ -122,7 +122,7 @@ def taskact(mychoice, default=None):
             for tsk in mychoice:
                 if base is None:
                     base = tsk.export()['warm']
-                elif base != tsk.export(['warm']):
+                elif base != tsk.export()['warm']:
                     print('Can only stage or unstage, not both')
             for tsk in mychoice:
                 tsk.warm(un=base)
@@ -134,6 +134,12 @@ def taskact(mychoice, default=None):
                     tsk.close()
                 return
         elif action == 'exit':
+            return
+        elif action == 'modify':
+            assert len(mychoice) == 1
+            tsk = mychoice[0]
+            newname = inquirer.text(message='New name:', default=tsk.export()['name'])
+            tupdate(tsk, {'name': newname})
             return
         else:
             assert False
@@ -186,7 +192,7 @@ def new(ctx, file, wakeup, task):
     while True:
         taskname = inquirer.text(message='task')
         taskobj = ctx.obj['API'].new_task({'name': taskname})
-        taskact(taskobj, 'triage')
+        taskact([taskobj], 'triage')
 
 # see #48
 #@cli.command()
