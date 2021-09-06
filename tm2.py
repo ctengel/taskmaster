@@ -228,14 +228,16 @@ def execute(ctx):
 @cli.command()
 @click.pass_context
 @click.option('-u', '--until')
-# TODO allow actual direct to printer
-# TODO allow other modes besides stage
+# TODO allow printing other modes besides paper/stage
 def paper(ctx, until):
-    """Noninteractive printable list of tasks"""
+    """Noninteractive printable list of tasks
+
+    Note this can be printed via lpr, etc
+    """
     utl = None
     if until:
         utl = datetime.datetime.fromisoformat(until)
-    tasklist = ctx.obj['API'].all_tasks(mode='stage', until=utl)
+    tasklist = ctx.obj['API'].all_tasks(mode='paper', until=utl)
     for tsk in tasklist:
         print(taskstr(tsk))
 

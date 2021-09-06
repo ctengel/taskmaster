@@ -116,6 +116,16 @@ def mode_many(mytasks, upper=None, fut=None):
     """Add mode field to many tasks"""
     return [mode_one(x, upper, fut=fut) for x in mytasks]
 
+def modesort(itema):
+    """Return a numerical value for the mode of the task"""
+    if itema['mode'] == 'warm':
+        return (0, not itema['urgent'], not itema['important'])
+    if itema['mode'] == 'awake':
+        return (1, not itema['urgent'], not itema['important'])
+    if itema['mode'] == 'asleep':
+        return (2, itema['wakeup'], None)
+    # triage, schedule, etc
+    return (3, None, None)
 
 @taskns.route('/')
 class TaskList(flask_restx.Resource):
@@ -125,7 +135,7 @@ class TaskList(flask_restx.Resource):
     def get(self):
         parser = flask_restx.reqparse.RequestParser() # TODO better way to call this?
         # TODO document these options
-        parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed'), default='open')
+        parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed', 'paper'), default='open')
         parser.add_argument('until', type=flask_restx.inputs.datetime_from_iso8601)
         # TODO support just date only
         # TODO support for status report "since"
@@ -146,6 +156,14 @@ class TaskList(flask_restx.Resource):
             if args['until']:
                 comprar = args['until']
             return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= comprar).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage', fut=comprar)
+        if mymo == 'paper':
+            comprar = datetime.datetime.now() + datetime.timedelta(days=1)
+            if args['until']:
+                comprar = args['until']
+            # TODO add a "paper" "upper"
+            baselist = mode_many(Task.query.filter(Task.closed == None, ((Task.wakeup == None) | (Task.wakeup <= comprar))).order_by(Task.wakeup).all(), None)
+            baselist.sort(key=modesort)
+            return baselist
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
