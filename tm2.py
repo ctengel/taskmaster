@@ -28,16 +28,28 @@ def taskstr(tsk):
                                        dateornull(tsk.getsched(), abbrev=True),
                                        exp['name'])
 
-def taskchoice(objlist):
-    """Given a list of task objects, show them and let a user pick one - return the object"""
-    # TODO multiple
+def taskchoice(objlist, new_opt=False, api_obj=None):
+    """Given a list of task objects, show them and let a user pick one - return the object
+
+    Set new_opt = True to allow a new task to be specified
+    """
     # TODO search all
     # TODO allow "new"
     # TODO allow exit
     choices = [taskstr(x) for x in objlist]
+    if new_opt:
+        assert api_obj
+        choices.append('NEW')
     # TODO default=next one
     choice = inquirer.checkbox('pick a task',
                                choices=[(x[1], x[0]) for x in enumerate(choices)])
+    if new_opt and len(choices) - 1 in choice:
+        assert len(choice) == 1
+        taskname = inquirer.text(message='task')
+        if not taskname:
+            return []
+        newtask = api_obj.new_task({'name': taskname})
+        return [newtask]
     return [objlist[x] for x in choice]
 
 def tupdate(taskobj, updatedct, confirm=True):
@@ -152,7 +164,9 @@ def mainloop(api, mode=None):
     """Loop through a single mode"""
     while True:
         tasklist = api.all_tasks(mode=mode)
-        mychoice = taskchoice(tasklist)
+        mychoice = taskchoice(tasklist, new_opt=True, api_obj=api)
+        if not mychoice:
+            return
         taskact(mychoice, mode)
 
 
@@ -191,6 +205,8 @@ def new(ctx, file, wakeup, task):
         return
     while True:
         taskname = inquirer.text(message='task')
+        if not taskname:
+            return
         taskobj = ctx.obj['API'].new_task({'name': taskname})
         taskact([taskobj], 'triage')
 
