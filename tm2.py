@@ -243,9 +243,22 @@ def execute(ctx):
 
 @cli.command()
 @click.pass_context
-@click.option('-u', '--until')
-# TODO allow printing other modes besides paper/stage
-def paper(ctx, until):
+@click.option('-u', '--until',
+              help='Period to show tasks over; only valid for default/paper and stage mode')
+@click.option('-m',
+              '--mode',
+              type=click.Choice(['triage',
+                                 'schedule',
+                                 'stage',
+                                 'execute',
+                                 'all',
+                                 'open',
+                                 'closed',
+                                 'paper']),
+              default='paper',
+              help='Show a different set of tasks',
+              show_default=True)
+def paper(ctx, until, mode):
     """Noninteractive printable list of tasks
 
     Note this can be printed via lpr, etc
@@ -253,7 +266,9 @@ def paper(ctx, until):
     utl = None
     if until:
         utl = datetime.datetime.fromisoformat(until)
-    tasklist = ctx.obj['API'].all_tasks(mode='paper', until=utl)
+    if utl:
+        assert mode in ('paper', 'stage')
+    tasklist = ctx.obj['API'].all_tasks(mode=mode, until=utl)
     for tsk in tasklist:
         print(taskstr(tsk))
 
