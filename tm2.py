@@ -240,6 +240,11 @@ def execute(ctx):
     """Close tasks"""
     mainloop(ctx.obj['API'], mode='execute')
 
+@cli.command()
+@click.pass_context
+def all(ctx):
+    """Interact with all tasks, including closed"""
+    mainloop(ctx.obj['API'], mode='all')
 
 @cli.command()
 @click.pass_context
