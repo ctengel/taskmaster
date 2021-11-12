@@ -208,6 +208,9 @@ class TodoOne(flask_restx.Resource):
                 setattr(mytask, key, value)
             elif key in ['wakeup']: # TODO is this the best way?
                 setattr(mytask, key, datetime.datetime.fromisoformat(value)) # TODO timezone?
+                # TODO keeping this seperate in case above used to deal with other timelike attributes
+                if key == 'wakeup' and datetime.datetime.fromisoformat(value) > datetime.datetime.now():
+                    mytask.warm = False
             else:
                 flask_restx.abort(403)
         db.session.commit()
