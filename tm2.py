@@ -70,8 +70,12 @@ def triageone(tobj):
                  inquirer.Text('pomodoros', message='How many poms?')] # TODO validate
     answers = inquirer.prompt(questions)
     answers['pomodoros'] = int(answers['pomodoros'])
+    print(answers)
+    choice = inquirer.confirm("Continue?", default=True)
+    if not choice:
+        return
     for tsk in tobj:
-        tupdate(tsk, answers)
+        tupdate(tsk, answers, confirm=False)
 
 def scheduleone(tobj):
     """Schedule one object"""
