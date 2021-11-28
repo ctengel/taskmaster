@@ -81,9 +81,12 @@ def scheduleone(tobj):
     # TODO  pull common times - see #36
     # TODO add weekend, weekday, etc
     # TODO saner defaults and options (i.e. don't suggest this afternoon if already begun)
-    # TODO friendlier display of options - see https://github.com/magmax/python-inquirer/blob/master/examples/list_tagged.py
+    # TODO friendlier display of options
+    #      see https://github.com/magmax/python-inquirer/blob/master/examples/list_tagged.py
+    commontl  = tobj[0].api.timelines()
     options = [None,
-               currsched,
+               currsched
+               ] + commontl + [
                datetime.datetime.now(),
                datetime.datetime.now() + datetime.timedelta(hours=1),
                datetime.date.today(),
@@ -242,7 +245,7 @@ def execute(ctx):
 
 @cli.command()
 @click.pass_context
-def all(ctx):
+def all_tasks(ctx):
     """Interact with all tasks, including closed"""
     mainloop(ctx.obj['API'], mode='all')
 

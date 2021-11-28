@@ -72,19 +72,23 @@ class TMApi:
     """TM API/list"""
 
     def __init__(self, url):
+        self.tlcache = [None, None]
         self.url = url
 
     def post(self, url, data):
+        """Run a post API"""
         r = requests.post(self.url + url, json=data)
         r.raise_for_status()
         return r.json()
 
     def get(self, url, params=None):
+        """Run a get API"""
         r = requests.get(self.url + url, params)
         r.raise_for_status()
         return r.json()
 
     def put(self, url, data):
+        """Run a put/patch API"""
         r = requests.put(self.url + url, json=data)
         r.raise_for_status()
         return r.json()
@@ -130,3 +134,11 @@ class TMApi:
     def duplicate_task(self, tid):
         """Duplicate a task with given task ID"""
         return self.post('tasks/' + str(tid) + '/action', {'duplicate': True})[1]['id']
+
+    def timelines(self):
+        """Return commonly used timelines"""
+        if not self.tlcache[0] or self.tlcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=1):
+            self.tlcache[0] = datetime.datetime.now()
+            self.tlcache[1] = [datetime.datetime.fromisoformat(x['timeline'])
+                               for x in self.get('timelines/')[0:3]]
+        return self.tlcache[1]

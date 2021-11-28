@@ -14,6 +14,7 @@ db = flask_sqlalchemy.SQLAlchemy(app)
 api = flask_restx.Api(app, version='0.1', title='TaskMaster API', description='API for interacting with a TaskMaster DB')#, validate=True) TODO validate
 
 taskns = api.namespace('tasks', description='TODO operations')
+tmlnns = api.namespace('timelines', description='Timelines')
 
 # TODO add more fields
 task = api.model('Task', {'id': flask_restx.fields.Integer(readonly=True, description='Task ID'),
@@ -31,10 +32,14 @@ task = api.model('Task', {'id': flask_restx.fields.Integer(readonly=True, descri
     'mode': flask_restx.fields.String(readonly=True, description='Primary mode')
     })
 
-action = api.model('Action', {'close': flask_restx.fields.Boolean(description='Close task', default=False), 'duplicate': flask_restx.fields.Boolean(description='Duplicate task', default=False)})
+action = api.model('Action', {'close': flask_restx.fields.Boolean(description='Close task', default=False),
+                              'duplicate': flask_restx.fields.Boolean(description='Duplicate task', default=False)})
+timeline = api.model('Timeline', {'timeline': flask_restx.fields.DateTime(description='Timeline'),
+                                  'count': flask_restx.fields.Integer(description='How many times it is used')})
 
 
 class Task(db.Model):
+    """Task table in database"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(256), nullable=False)
     priority = db.Column(db.Integer)
@@ -129,10 +134,13 @@ def modesort(itema):
 
 @taskns.route('/')
 class TaskList(flask_restx.Resource):
+    """All tasks API"""
+
     # TODO swagger document mode param
     @taskns.doc('list_tasks')
     @taskns.marshal_list_with(task)
     def get(self):
+        """Get all tasks"""
         parser = flask_restx.reqparse.RequestParser() # TODO better way to call this?
         # TODO document these options
         parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed', 'paper'), default='open')
@@ -155,29 +163,43 @@ class TaskList(flask_restx.Resource):
             comprar = datetime.datetime.now()
             if args['until']:
                 comprar = args['until']
-            return mode_many(Task.query.filter(Task.closed == None, Task.wakeup <= comprar).order_by(Task.frog.desc(), Task.priority, Task.urgent.desc(), Task.important.desc()).all(), 'stage', fut=comprar)
+            return mode_many(Task.query.filter(Task.closed == None,
+                                               Task.wakeup <= comprar).order_by(Task.frog.desc(),
+                                                                                Task.priority,
+                                                                                Task.urgent.desc(),
+                                                                                Task.important.desc()).all(),
+                             'stage', fut=comprar)
         if mymo == 'paper':
             comprar = datetime.datetime.now() + datetime.timedelta(days=1)
             if args['until']:
                 comprar = args['until']
             # TODO add a "paper" "upper"
-            baselist = mode_many(Task.query.filter(Task.closed == None, ((Task.wakeup == None) | (Task.wakeup <= comprar))).order_by(Task.wakeup).all(), None)
+            baselist = mode_many(Task.query.filter(Task.closed == None,
+                                                   ((Task.wakeup == None) | (Task.wakeup <= comprar))).order_by(Task.wakeup).all(),
+                                 None)
             baselist.sort(key=modesort)
             return baselist
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
             # TODO bulk reschedule option?
-            return mode_many(Task.query.filter(Task.closed == None, Task.warm == False, Task.wakeup == None).order_by(Task.important.desc(), Task.urgent.desc()).all(), 'schedule')
+            return mode_many(Task.query.filter(Task.closed == None,
+                                               Task.warm == False,
+                                               Task.wakeup == None).order_by(Task.important.desc(),
+                                                                             Task.urgent.desc()).all(),
+                             'schedule')
         if mymo == 'triage':
             # TODO look for missing tags here
-            return mode_many(Task.query.filter(Task.closed == None, ((Task.pomodoros == None) | (Task.urgent == None) | (Task.important == None))).all(), 'triage')
+            return mode_many(Task.query.filter(Task.closed == None,
+                                               ((Task.pomodoros == None) | (Task.urgent == None) | (Task.important == None))).all(),
+                             'triage')
         assert False
 
     @taskns.doc('create_task')
     @taskns.expect(task)
     @taskns.marshal_with(task, code=201)
     def post(self):
+        """Create task"""
         # TODO restrict
         indict = dict(api.payload)
         # TODO merge with PUT code
@@ -193,15 +215,20 @@ class TaskList(flask_restx.Resource):
 @taskns.response(404, 'Task not found')
 @taskns.param('id', 'Task ID')
 class TodoOne(flask_restx.Resource):
+    """One task API"""
+
     @taskns.doc('get_task')
     @taskns.marshal_with(task)
     def get(self, id):
+        """Get one task"""
         return mode_one(Task.query.get_or_404(id))
 
     @taskns.doc('put_task')
     @taskns.expect(task)
     @taskns.marshal_with(task)
     def put(self, id):
+        """Update one task"""
+        # TODO should this be PATCH?
         mytask = Task.query.get_or_404(id)
         for key, value in api.payload.items():
             if key in ['name', 'priority', 'urgent', 'important', 'frog', 'pomodoros', 'warm']:
@@ -221,11 +248,14 @@ class TodoOne(flask_restx.Resource):
 @taskns.response(404, 'Task not found')
 @taskns.param('id', 'Task ID')
 class TodoAction(flask_restx.Resource):
+    """API to take action on a task"""
+
     @taskns.doc('action_task')
     @taskns.expect(action)
     @taskns.marshal_list_with(task)
     def post(self, id):
-        mytask = Task.query.get_or_404(id)        
+        """Close and/or duplicate a task"""
+        mytask = Task.query.get_or_404(id)
         # TODO does this API result make sense?
         newtask = None
         if api.payload.get('duplicate'):
@@ -239,7 +269,25 @@ class TodoAction(flask_restx.Resource):
             return [mode_one(mytask), mode_one(newtask)]
         else:
             return [mode_one(mytask)]
-        
+
+
+@tmlnns.route('/')
+class TimelineList(flask_restx.Resource):
+    """List of timelines"""
+
+    @taskns.doc('list_timelines')
+    @taskns.marshal_list_with(timeline)
+    def get(self):
+        """Auto-generated timeline list"""
+        parser = flask_restx.reqparse.RequestParser()# TODO better way to call this?
+        # TODO document these options
+        parser.add_argument('type', choices=('wakeup',), default='wakeup') # TODO - allow this to be all and then spec in results
+        args = parser.parse_args()
+        assert args['type'] == 'wakeup'
+        result = Task.query.with_entities(Task.wakeup,
+                                          db.func.count(Task.wakeup)).group_by(Task.wakeup).filter(Task.closed == None,
+                                                                                                   Task.wakeup >= datetime.datetime.now()).order_by(db.func.count(Task.wakeup).desc()).all()
+        return [{'timeline': x[0], 'count': x[1]} for x in result]
 
 
 
