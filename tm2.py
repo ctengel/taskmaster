@@ -167,10 +167,12 @@ def taskact(mychoice, default=None):
         # TODO set Frog
 
 
-def mainloop(api, mode=None):
+def mainloop(api, mode=None, until=None):
     """Loop through a single mode"""
+    if until:
+        until = datetime.datetime.fromisoformat(until)
     while True:
-        tasklist = api.all_tasks(mode=mode)
+        tasklist = api.all_tasks(mode=mode, until=until)
         mychoice = taskchoice(tasklist, new_opt=True, api_obj=api)
         if not mychoice:
             return
@@ -237,9 +239,11 @@ def schedule(ctx):
 
 @cli.command()
 @click.pass_context
-def stage(ctx):
+@click.option('-u', '--until',
+              help='See future tasks')
+def stage(ctx, until):
     """Prep tasks for execution"""
-    mainloop(ctx.obj['API'], mode='stage')
+    mainloop(ctx.obj['API'], mode='stage', until=until)
 
 @cli.command()
 @click.pass_context
