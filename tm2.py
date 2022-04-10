@@ -93,13 +93,18 @@ def scheduleone(tobj):
                ] + commontl + [
                datetime.datetime.now(),
                datetime.datetime.now() + datetime.timedelta(hours=1),
-               datetime.date.today(),
-               datetime.datetime.combine(datetime.date.today(),
-                                         datetime.time(hour=12)),
-               datetime.date.today() + datetime.timedelta(days=1),
-               datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
-                                         datetime.time(hour=6))]
-    newsched = inquirer.list_input('date', choices=options, carousel=True)
+               datetime.date.today()]
+    after_breakfast = datetime.datetime.combine(datetime.date.today(),
+                                                datetime.time(hour=12))
+    if after_breakfast > datetime.datetime.now():
+        options.append(after_breakfast)
+    options += [datetime.date.today() + datetime.timedelta(days=1),
+                datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
+                                          datetime.time(hour=6))]
+    # TODO use date or null here?
+    opt_lab = [("{} {}".format(x.strftime('%a'), x), x) if x else ("Custom", None)
+               for x in options]
+    newsched = inquirer.list_input('date', choices=opt_lab, carousel=True)
     if not newsched:
         # TODO ask again if not valid
         # TODO allow date only
@@ -125,7 +130,12 @@ def taskact(mychoice, default=None):
 
         # TODO take into account current status of the task itself to determine default
         action = inquirer.list_input('action',
-                                     choices=['triage', 'schedule', 'stage', 'execute', 'modify', 'exit'],
+                                     choices=['triage',
+                                              'schedule',
+                                              'stage',
+                                              'execute',
+                                              'modify',
+                                              'exit'],
                                      default=default,
                                      carousel=True)
 
