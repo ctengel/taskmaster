@@ -145,11 +145,19 @@ class TaskList(flask_restx.Resource):
         # TODO document these options
         parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed', 'paper'), default='open')
         parser.add_argument('until', type=flask_restx.inputs.datetime_from_iso8601)
+        parser.add_argument('search')
         # TODO support just date only
         # TODO support for status report "since"
         args = parser.parse_args()
         mymo = args['mode']
         assert mymo
+        if args.get('search'):
+            # TODO integrate search better into the other modes
+            assert mymo in ('all', 'open')
+            if mymo == 'all':
+                return mode_many(Task.query.filter(Task.name.like("%{}%".format(args['search']))).all(), 'all')
+            else:
+                return mode_many(Task.query.filter(Task.closed == None, Task.name.like("%{}%".format(args['search']))).all(), 'open')
         if mymo == 'all':
             return mode_many(Task.query.all(), 'all')
         if mymo == 'open':
