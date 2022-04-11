@@ -28,7 +28,7 @@ def taskstr(tsk):
                                        dateornull(tsk.getsched(), abbrev=True),
                                        exp['name'])
 
-def taskchoice(objlist, new_opt=False, api_obj=None):
+def taskchoice(objlist, new_opt=False, api_obj=None, new_def=None):
     """Given a list of task objects, show them and let a user pick one - return the object
 
     Set new_opt = True to allow a new task to be specified
@@ -45,7 +45,7 @@ def taskchoice(objlist, new_opt=False, api_obj=None):
                                choices=[(x[1], x[0]) for x in enumerate(choices)])
     if new_opt and len(choices) - 1 in choice:
         assert len(choice) == 1
-        taskname = inquirer.text(message='task')
+        taskname = inquirer.text(message='task', default=new_def)
         if not taskname:
             return []
         newtask = api_obj.new_task({'name': taskname})
@@ -303,8 +303,9 @@ def paper(ctx, until, mode):
 @click.argument('task', nargs=-1, required=True)
 def search(ctx, task):
     """Search for a task and allow wakeup or creation (aka upsert)"""
-    tasklist = ctx.obj['API'].search_tasks(task_search=task)
-    mychoice = taskchoice(tasklist)
+    srch_str = " ".join(task)
+    tasklist = ctx.obj['API'].search_tasks(task_search=srch_str)
+    mychoice = taskchoice(tasklist, new_opt=True, api_obj=ctx.obj['API'], new_def=srch_str)
     taskact(mychoice, 'schedule')
 
 # see #20
