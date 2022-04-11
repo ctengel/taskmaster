@@ -298,6 +298,15 @@ def paper(ctx, until, mode):
     for tsk in tasklist:
         print(taskstr(tsk))
 
+@cli.command()
+@click.pass_context
+@click.argument('task', nargs=-1, required=True)
+def search(ctx, task):
+    """Search for a task and allow wakeup or creation (aka upsert)"""
+    tasklist = ctx.obj['API'].search_tasks(task_search=task)
+    mychoice = taskchoice(tasklist)
+    taskact(mychoice, 'schedule')
+
 # see #20
 #@cli.command()
 #@click.pass_context

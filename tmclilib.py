@@ -112,6 +112,11 @@ class TMApi:
                 params['until'] = until.isoformat()
         return [Task(self, x) for x in self.get('tasks/', params)]
 
+    def search_tasks(self, task_search):
+        """Return Tasks matching a string"""
+        params = {'search': task_search}
+        return [Task(self, x) for x in self.get('tasks/', params)]
+
     def one_task(self, tid):
         """Return one task, given an ID"""
         return Task(self, self.get('tasks/' + str(tid)))
