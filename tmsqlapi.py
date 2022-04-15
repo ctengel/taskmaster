@@ -5,6 +5,8 @@ import flask
 import flask_restx
 import flask_sqlalchemy
 
+# Possible contexts
+CTX = ['home-weekday', 'home-weekend', 'work-vpn', 'work-internet', 'errand', 'trip']
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
@@ -15,6 +17,7 @@ api = flask_restx.Api(app, version='0.1', title='TaskMaster API', description='A
 
 taskns = api.namespace('tasks', description='TODO operations')
 tmlnns = api.namespace('timelines', description='Timelines')
+ctxns = api.namespace('contexts', description='Contexts')
 
 # TODO add more fields
 task = api.model('Task', {'id': flask_restx.fields.Integer(readonly=True, description='Task ID'),
@@ -29,7 +32,9 @@ task = api.model('Task', {'id': flask_restx.fields.Integer(readonly=True, descri
     'warm': flask_restx.fields.Boolean(description='Actively in execution'),
     'pomodoros': flask_restx.fields.Integer(description='How long it take'),
     'priority': flask_restx.fields.Integer(description='Priority'),
-    'mode': flask_restx.fields.String(readonly=True, description='Primary mode')
+    'mode': flask_restx.fields.String(readonly=True, description='Primary mode'),
+    'context': flask_restx.fields.String(description='Where it can be done'),
+    'due': flask_restx.fields.DateTime(description='When a task must be done')
     })
 
 action = api.model('Action', {'close': flask_restx.fields.Boolean(description='Close task', default=False),
@@ -56,13 +61,12 @@ class Task(db.Model):
     #url = db.Column(db.String(256))
     #assignee = db.Column(db.String(16))
     #source = db.Column(db.String(256))
-    #context = db.Column(db.String(16))
+    context = db.Column(db.String(16))
     #project = db.Column(db.String(16))
     #goal = db.Column(db.String(16))
     #dependency_id = db.Column(db.Integer, db.ForeignKey('task.id'))
     #nexttasks = db.relationship('Person')
-    # TODO due??? handle overdue???
-
+    due = db.Column(db.DateTime)
 
 def taskmode(mytask, upper=None, fut=None):
     """Determine mode field
@@ -76,6 +80,8 @@ def taskmode(mytask, upper=None, fut=None):
     if mytask.closed is not None:
         mode = 'closed'
         assert upper in [None, 'all', 'closed']
+    elif mytask.due < fut:
+        mode = 'overdue'
     elif mytask.warm == True:
         mode = 'warm'
         assert upper in [None, 'all', 'open', 'execute', 'stage', 'triage']
@@ -99,11 +105,11 @@ def taskmode(mytask, upper=None, fut=None):
     if upper == 'open':
         assert mode != 'closed'
     if upper == 'execute':
-        assert mode == 'warm'
+        assert mode in ['warm', 'overdue']
     if upper == 'stage':
-        assert mode in ['warm', 'awake']
+        assert mode in ['warm', 'awake', 'overdue']
     if upper == 'schedule':
-        assert mode in ['schedule', 'triage']
+        assert mode in ['schedule', 'triage', 'overdue']
     if upper == 'triage':
         assert mode not in ['closed', 'schedule']
     return mode
@@ -123,14 +129,16 @@ def mode_many(mytasks, upper=None, fut=None):
 
 def modesort(itema):
     """Return a numerical value for the mode of the task"""
+    if itema['mode'] == 'overdue':
+        return (0, None, None)
     if itema['mode'] == 'warm':
-        return (0, not itema['urgent'], not itema['important'])
-    if itema['mode'] == 'awake':
         return (1, not itema['urgent'], not itema['important'])
+    if itema['mode'] == 'awake':
+        return (2, not itema['urgent'], not itema['important'])
     if itema['mode'] == 'asleep':
-        return (2, itema['wakeup'], None)
+        return (3, itema['wakeup'], None)
     # triage, schedule, etc
-    return (3, None, None)
+    return (4, None, None)
 
 @taskns.route('/')
 class TaskList(flask_restx.Resource):
@@ -146,11 +154,15 @@ class TaskList(flask_restx.Resource):
         parser.add_argument('mode', choices=('triage', 'schedule', 'stage', 'execute', 'all', 'open', 'closed', 'paper'), default='open')
         parser.add_argument('until', type=flask_restx.inputs.datetime_from_iso8601)
         parser.add_argument('search')
+        parser.add_argument('context')
         # TODO support just date only
         # TODO support for status report "since"
         args = parser.parse_args()
         mymo = args['mode']
         assert mymo
+        if args.get('context'):
+            assert args['context'] in CTX
+            assert mymo in ('paper', 'stage')
         if args.get('search'):
             # TODO integrate search better into the other modes
             assert mymo in ('all', 'open')
@@ -165,23 +177,39 @@ class TaskList(flask_restx.Resource):
         if mymo == 'closed':
             return mode_many(Task.query.filter(Task.closed != None).order_by(Task.closed.desc()).all(), 'closed')
         if mymo == 'execute':
+            # TODO accept a context? or warm stays warm always?
             return mode_many(Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority).all(), 'execute')
         if mymo == 'stage':
             # TODO should this include warm?
             comprar = datetime.datetime.now()
             if args['until']:
                 comprar = args['until']
-            return mode_many(Task.query.filter(Task.closed == None,
-                                               Task.wakeup <= comprar).order_by(Task.frog.desc(),
-                                                                                Task.priority,
-                                                                                Task.urgent.desc(),
-                                                                                Task.important.desc()).all(),
-                             'stage', fut=comprar)
+            if args['context']:
+                mtl = Task.query.filter(Task.closed == None,
+                                        Task.context == args['context'],
+                                        Task.wakeup <= comprar).order_by(Task.frog.desc(),
+                                                                         Task.priority,
+                                                                         Task.urgent.desc(),
+                                                                         Task.important.desc()).all()
+            else:
+                mtl = Task.query.filter(Task.closed == None,
+                                        Task.wakeup <= comprar).order_by(Task.frog.desc(),
+                                                                         Task.priority,
+                                                                         Task.urgent.desc(),
+                                                                         Task.important.desc()).all()
+            return mode_many(mtl, 'stage', fut=comprar)
         if mymo == 'paper':
             comprar = datetime.datetime.now() + datetime.timedelta(days=1)
             if args['until']:
                 comprar = args['until']
-            # TODO add a "paper" "upper"
+            if args['context']:
+                baselist = mode_many(Task.query.filter(Task.closed == None,
+                                                       ((Task.wakeup == None) | (Task.wakeup <= comprar)),
+                                                       ((Task.context == None) | (Task.context == args['context']) | (Task.due <= comprar))).order_by(Task.wakeup).all(),
+                                     None)
+                baselist.sort(key=modesort)
+                return baselist                
+            # TODO add a "paper" "upper"                
             baselist = mode_many(Task.query.filter(Task.closed == None,
                                                    ((Task.wakeup == None) | (Task.wakeup <= comprar))).order_by(Task.wakeup).all(),
                                  None)
@@ -190,14 +218,14 @@ class TaskList(flask_restx.Resource):
         if mymo == 'schedule':
             # TODO also put in overdue
             # TODO should this include current schedule
-            # TODO bulk reschedule option?
+            # TODO allow context filter?
             return mode_many(Task.query.filter(Task.closed == None,
                                                Task.warm == False,
                                                Task.wakeup == None).order_by(Task.important.desc(),
                                                                              Task.urgent.desc()).all(),
                              'schedule')
         if mymo == 'triage':
-            # TODO look for missing tags here
+            # TODO look for missing tags here, especially context
             return mode_many(Task.query.filter(Task.closed == None,
                                                ((Task.pomodoros == None) | (Task.urgent == None) | (Task.important == None))).all(),
                              'triage')
@@ -213,6 +241,12 @@ class TaskList(flask_restx.Resource):
         # TODO merge with PUT code
         if indict.get('wakeup'):
             indict['wakeup'] = datetime.datetime.fromisoformat(indict['wakeup'])
+        if indict.get('due'):
+            indict['due'] = datetime.datetime.fromisoformat(indict['due'])
+        if indict.get('due') and indict.get('wakeup'):
+            assert indict['wakeup'] < indict['due']
+        if indict.get('context') is not None:
+            assert indict['context'] in CTX
         newtask = Task(**indict)
         db.session.add(newtask)
         db.session.commit()
@@ -241,13 +275,18 @@ class TodoOne(flask_restx.Resource):
         for key, value in api.payload.items():
             if key in ['name', 'priority', 'urgent', 'important', 'frog', 'pomodoros', 'warm']:
                 setattr(mytask, key, value)
-            elif key in ['wakeup']: # TODO is this the best way?
+            elif key in ['wakeup', 'due']: # TODO is this the best way?
                 setattr(mytask, key, datetime.datetime.fromisoformat(value)) # TODO timezone?
                 # TODO keeping this seperate in case above used to deal with other timelike attributes
                 if key == 'wakeup' and datetime.datetime.fromisoformat(value) > datetime.datetime.now():
                     mytask.warm = False
+            elif key == 'context':
+                assert value in CTX
+                mytask.context = value
             else:
                 flask_restx.abort(403)
+        if mytask.due and mytask.wakeup:
+            assert mytask.due > mytask.wakeup
         db.session.commit()
         return mode_one(mytask)
 
@@ -287,6 +326,8 @@ class TimelineList(flask_restx.Resource):
     @taskns.marshal_list_with(timeline)
     def get(self):
         """Auto-generated timeline list"""
+        # TODO show timelines per context (i.e. take a ctx arg and show what timelines are in that context only)
+        # TODO allow listing due timelines
         parser = flask_restx.reqparse.RequestParser()# TODO better way to call this?
         # TODO document these options
         parser.add_argument('type', choices=('wakeup',), default='wakeup') # TODO - allow this to be all and then spec in results
@@ -298,6 +339,13 @@ class TimelineList(flask_restx.Resource):
         return [{'timeline': x[0], 'count': x[1]} for x in result]
 
 
+@ctxns.route('/')
+class ContextList(flask_restx.Resource):
+    """List of contexts"""
+
+    @ctxns.doc('list_contexts')
+    def get(self):
+        return CTX
 
 # TODO get similar to task ID x
 # TODO search for string in name, desc, etc
