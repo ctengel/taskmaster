@@ -6,7 +6,7 @@ import flask_restx
 import flask_sqlalchemy
 
 # Possible contexts
-CTX = ['home-weekday', 'home-weekend', 'work-vpn', 'work-internet', 'errand', 'trip']
+CTX = ['hmdy', 'hmed', 'wknw', 'hmcl', 'wkin', 'wkof', 'errd', 'trip']
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
@@ -61,7 +61,7 @@ class Task(db.Model):
     #url = db.Column(db.String(256))
     #assignee = db.Column(db.String(16))
     #source = db.Column(db.String(256))
-    context = db.Column(db.String(16))
+    context = db.Column(db.String(8))
     #project = db.Column(db.String(16))
     #goal = db.Column(db.String(16))
     #dependency_id = db.Column(db.Integer, db.ForeignKey('task.id'))

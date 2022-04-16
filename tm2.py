@@ -22,11 +22,13 @@ def dateornull(dateobj=None, abbrev=False):
 def taskstr(tsk):
     """String representation of a task"""
     exp = tsk.export()
-    return '{: <8}  {}  {: >4}  {}  {}'.format(exp['mode'].upper(),
-                                       tsk.uif(),
-                                       str(exp['pomodoros']),
-                                       dateornull(tsk.getsched(), abbrev=True),
-                                       exp['name'])
+    return '{: <8} {: <4} {} {: >2} {} {} {}'.format(exp['mode'].upper(),
+                                                     exp['context'].upper(),
+                                                     tsk.uif(),
+                                                     str(exp['pomodoros']),
+                                                     dateornull(tsk.getsched(), abbrev=True),
+                                                     dateornull(tsk.getsched(), abbrev=True),
+                                                     exp['name'])
 
 def taskchoice(objlist, new_opt=False, api_obj=None, new_def=None):
     """Given a list of task objects, show them and let a user pick one - return the object
@@ -67,7 +69,8 @@ def triageone(tobj):
     # TODO current values as defaults
     questions = [inquirer.Confirm('important', message='Is it important?'),
                  inquirer.Confirm('urgent', message='Is it urgent?'),
-                 inquirer.Text('pomodoros', message='How many poms?')] # TODO validate
+                 inquirer.Text('pomodoros', message='How many poms?'),
+                 inquirer.List('context', message='Which context?', choices=tobj[0].api.contexts())] # TODO validate
     answers = inquirer.prompt(questions)
     answers['pomodoros'] = int(answers['pomodoros'])
     print(answers)
@@ -117,6 +120,15 @@ def scheduleone(tobj):
         if tsk.getsched() != newsched:
             # TODO confirm
             tsk.schedule(newsched)
+    choice = inquirer.confirm("Do you want to assign/reset a due date?", default=True)
+    if not choice:
+        return
+    newdue = datetime.date(inquirer.text(message='date'))
+    newdue = datetime.datetime.combine(newdue, datetime.time(hour=0))
+    for tsk in tobj:
+        if tsk.get_due() != newdue:
+            tsk.set_due(newdue)
+
 
 
 def taskact(mychoice, default=None):
@@ -177,12 +189,12 @@ def taskact(mychoice, default=None):
         # TODO set Frog
 
 
-def mainloop(api, mode=None, until=None):
+def mainloop(api, mode=None, until=None, context=None):
     """Loop through a single mode"""
     if until:
         until = datetime.datetime.fromisoformat(until)
     while True:
-        tasklist = api.all_tasks(mode=mode, until=until)
+        tasklist = api.all_tasks(mode=mode, until=until, context=context)
         mychoice = taskchoice(tasklist, new_opt=True, api_obj=api)
         if not mychoice:
             return
@@ -204,9 +216,10 @@ def cli(ctx, api):
 @cli.command()
 @click.pass_context
 @click.option('-f', '--file', type=click.File())
-@click.option('-w',  '--wakeup')
+@click.option('-w', '--wakeup')
+@click.option('-c', '--context')
 @click.argument('task', nargs=-1)
-def new(ctx, file, wakeup, task):
+def new(ctx, file, wakeup, task, context):
     """Add a task from standard input"""
     assert not (task and file)
     if not (task or file):
@@ -215,18 +228,18 @@ def new(ctx, file, wakeup, task):
     if file:
         # TODO more enhanced file analysis
         for one in file:
-            taskobj = ctx.obj['API'].new_task({'name': one.strip(), 'wakeup': wakeup})
+            taskobj = ctx.obj['API'].new_task({'name': one.strip(), 'wakeup': wakeup, 'context': context})
             print(taskobj.export())
         return
     if task:
-        taskobj = ctx.obj['API'].new_task({'name': ' '.join(task), 'wakeup': wakeup})
+        taskobj = ctx.obj['API'].new_task({'name': ' '.join(task), 'wakeup': wakeup, 'context': context})
         print(taskobj.export())
         return
     while True:
         taskname = inquirer.text(message='task')
         if not taskname:
             return
-        taskobj = ctx.obj['API'].new_task({'name': taskname})
+        taskobj = ctx.obj['API'].new_task({'name': taskname, 'context': context})
         taskact([taskobj], 'triage')
 
 # see #48
@@ -251,9 +264,10 @@ def schedule(ctx):
 @click.pass_context
 @click.option('-u', '--until',
               help='See future tasks')
-def stage(ctx, until):
+@click.option('-c', '--context')
+def stage(ctx, until, context):
     """Prep tasks for execution"""
-    mainloop(ctx.obj['API'], mode='stage', until=until)
+    mainloop(ctx.obj['API'], mode='stage', until=until, context=context)
 
 @cli.command()
 @click.pass_context
@@ -284,7 +298,8 @@ def all_tasks(ctx):
               default='paper',
               help='Show a different set of tasks',
               show_default=True)
-def paper(ctx, until, mode):
+@click.option('-c', '--context')
+def paper(ctx, until, mode, context):
     """Noninteractive printable list of tasks
 
     Note this can be printed via lpr, etc
@@ -294,7 +309,7 @@ def paper(ctx, until, mode):
         utl = datetime.datetime.fromisoformat(until)
     if utl:
         assert mode in ('paper', 'stage')
-    tasklist = ctx.obj['API'].all_tasks(mode=mode, until=utl)
+    tasklist = ctx.obj['API'].all_tasks(mode=mode, until=utl, context=context)
     for tsk in tasklist:
         print(taskstr(tsk))
 
