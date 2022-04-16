@@ -50,6 +50,15 @@ class Task:
             return None
         return datetime.datetime.fromisoformat(self.dct['wakeup'])
 
+    def set_due(self, when):
+        """Set a due date"""
+        self.update({'due': when.isoformat()})
+
+    def get_due(self):
+        """Get due date"""
+        if not self.dct['due']:
+            return None
+        return datetime.datetime.fromisoformat(self.dct['due'])
 
     def __repr__(self):
         return 'Task({}, {}, {}, {})'.format(self.tid,
@@ -73,6 +82,7 @@ class TMApi:
 
     def __init__(self, url):
         self.tlcache = [None, None]
+        self.ctcache = [None, None]
         self.url = url
 
     def post(self, url, data):
@@ -100,7 +110,7 @@ class TMApi:
         """
         return Task(self, self.post('tasks/', td))
 
-    def all_tasks(self, mode=None, until=None):
+    def all_tasks(self, mode=None, until=None, context=None):
         """Return all Task objects
 
         mode corresponds to server mode
@@ -110,6 +120,8 @@ class TMApi:
             params = {'mode': mode}
             if until:
                 params['until'] = until.isoformat()
+            if context:
+                params['context'] = context
         return [Task(self, x) for x in self.get('tasks/', params)]
 
     def search_tasks(self, task_search):
@@ -142,8 +154,17 @@ class TMApi:
 
     def timelines(self):
         """Return commonly used timelines"""
-        if not self.tlcache[0] or self.tlcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=1):
+        if not self.tlcache[0] \
+                or self.tlcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=1):
             self.tlcache[0] = datetime.datetime.now()
             self.tlcache[1] = [datetime.datetime.fromisoformat(x['timeline'])
                                for x in self.get('timelines/')[0:3]]
         return self.tlcache[1]
+
+    def contexts(self):
+        """Return valid contexts"""
+        if not self.ctcache[0] \
+                or self.ctcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=2):
+            self.ctcache[0] = datetime.datetime.now()
+            self.ctcache[1] = self.get('contexts/')
+        return self.ctcache[1]
