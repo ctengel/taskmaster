@@ -6,7 +6,7 @@ import flask_restx
 import flask_sqlalchemy
 
 # Possible contexts
-CTX = ['hmdy', 'hmed', 'wknw', 'hmcl', 'wkin', 'wkof', 'errd', 'trip']
+CTX = ['hmdy', 'hmed', 'wknw', 'hmfm', 'wkin', 'wkof', 'errd', 'trip', 'hmid', 'wkid']
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
@@ -80,7 +80,7 @@ def taskmode(mytask, upper=None, fut=None):
     if mytask.closed is not None:
         mode = 'closed'
         assert upper in [None, 'all', 'closed']
-    elif mytask.due < fut:
+    elif mytask.due and mytask.due < fut:
         mode = 'overdue'
     elif mytask.warm == True:
         mode = 'warm'

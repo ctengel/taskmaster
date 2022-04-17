@@ -23,11 +23,11 @@ def taskstr(tsk):
     """String representation of a task"""
     exp = tsk.export()
     return '{: <8} {: <4} {} {: >2} {} {} {}'.format(exp['mode'].upper(),
-                                                     exp['context'].upper(),
+                                                     exp['context'].upper() if exp['context'] else '',
                                                      tsk.uif(),
                                                      str(exp['pomodoros']),
                                                      dateornull(tsk.getsched(), abbrev=True),
-                                                     dateornull(tsk.getsched(), abbrev=True),
+                                                     dateornull(tsk.get_due(), abbrev=True),
                                                      exp['name'])
 
 def taskchoice(objlist, new_opt=False, api_obj=None, new_def=None):
@@ -202,7 +202,7 @@ def mainloop(api, mode=None, until=None, context=None):
 
 
 @click.group()
-@click.option('-a', '--api', default=False)
+@click.option('-a', '--api', default=None)
 @click.pass_context
 def cli(ctx, api):
     """Click CLI parent object, setup API obj"""

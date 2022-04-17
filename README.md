@@ -76,6 +76,9 @@ Tags:
 * type - source, context, project, goal, assignee
 * value
 
+### Upgrades
+See `sql/`
+
 Filters
 -------
 * all/None
@@ -91,3 +94,7 @@ How to
 
 * Run the API: `$ TMSQLAPI_SETTINGS=sample.cfg python tmsqlapi.py`
 * Run the Client: `$ ./tm2.py -a http://127.0.0.1:5000/ new`
+
+### Install
+
+No `setup.py` yet, but install requires `inquirer`.
