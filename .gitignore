@@ -4,3 +4,4 @@ __pycache__
 *.pyshelve
 *.swp
 my.cfg
+*.sh

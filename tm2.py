@@ -3,6 +3,7 @@
 """A basic CLI Client for TaskMaster"""
 
 import datetime
+import os
 import click
 import inquirer
 import tmclilib
@@ -210,6 +211,8 @@ def cli(ctx, api):
     # by means other than the `if` block below)
     ctx.ensure_object(dict)
     # TODO allow API URL to be stored in an environment variable
+    if not api:
+        api = os.environ.get('TMAPIURL')
     assert api
     ctx.obj['API'] = tmclilib.TMApi(url=api)
 
