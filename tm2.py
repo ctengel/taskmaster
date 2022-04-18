@@ -123,7 +123,7 @@ def scheduleone(tobj):
     choice = inquirer.confirm("Do you want to assign/reset a due date?", default=True)
     if not choice:
         return
-    newdue = datetime.date(inquirer.text(message='date'))
+    newdue = datetime.date.fromisoformat(inquirer.text(message='date'))
     newdue = datetime.datetime.combine(newdue, datetime.time(hour=0))
     for tsk in tobj:
         if tsk.get_due() != newdue:
