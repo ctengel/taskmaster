@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}GoTime{% endblock %}
+
+{% block content %}
+<ul>
+	{% for task in tasks %}
+	<li>{{ task.name }}</li>
+	{% endfor %}
+</ul>
+{% endblock %}
