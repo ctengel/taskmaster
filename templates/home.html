@@ -3,9 +3,34 @@
 {% block title %}GoTime{% endblock %}
 
 {% block content %}
+
+<form action="{{ url_for('stage_exec') }}">
+	<p>
+		<label for="context">Context: </label>
+		<select name="context" id="context">
+			{% for contextsel in contexts %}
+			<option{% if contextsel == context %} selected="selected"{% endif %}>{{ contextsel }}</option>
+			{% endfor %}
+		</select>
+		<input type="submit" value="Switch" />
+</form>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
 <ul>
-	{% for task in tasks %}
-	<li>{{ task.name }}</li>
+	{% for message in messages %}
+	<li>{{ message }}</li>
 	{% endfor %}
 </ul>
+{% endif %}
+{% endwith %}
+
+<p>{{ today }}</p>
+
+<ul>
+	{% for task in tasks %}
+	<li>{% if task.context == context %}<strong>{% endif %}{{ task.name }}{% if task.context == context %}</strong>{% else %} ({{task.context}}){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}<form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST"><input type="submit" name="complete" value="&check;" /><input type="submit" name="unstage" value="X" /></form></li>
+	{% endfor %}
+</ul>
+
 {% endblock %}
