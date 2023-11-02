@@ -152,8 +152,10 @@ class TMApi:
         """Duplicate a task with given task ID"""
         return self.post('tasks/' + str(tid) + '/action', {'duplicate': True})[1]['id']
 
-    def timelines(self):
+    def timelines(self, get_all=False):
         """Return commonly used timelines"""
+        if get_all:
+            return self.get('timelines/')
         if not self.tlcache[0] \
                 or self.tlcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=1):
             self.tlcache[0] = datetime.datetime.now()
