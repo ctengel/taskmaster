@@ -1,3 +1,5 @@
+"""TaskMaster non-JS WebGUI which fronts the RESTful API"""
+
 import secrets
 import datetime
 import os
@@ -10,12 +12,16 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex()
 
 def get_api():
+    """Get TM Client object"""
     if 'api' not in g:
         g.api = TMApi(os.environ['TMAPIURL'])
     return g.api
 
+
+
 @app.get('/')
 def stage_exec():
+    """Display current tasks, either exec only or all"""
     stage = (request.args.get('stage') == 'on')
     contexts = sorted(get_api().contexts())
     context = request.args.get('context')
@@ -36,7 +42,7 @@ def stage_exec():
             task["due_date"] = datetime.datetime.fromisoformat(task["due"]).strftime(DATE_FMT)
         else:
             task["due_date"] = None
-    timelines = sorted([datetime.datetime.fromisoformat(x["timeline"]) for x in get_api().timelines(get_all=True)])
+    timelines = get_api().timelines_native()
     if timelines:
         s1_date = timelines[0].strftime(DATE_FMT)
         if len(timelines) > 1:
@@ -46,9 +52,6 @@ def stage_exec():
     else:
         s1_date = None
         s2_date = None
-
-
-
     return render_template('home.html',
                            tasks=task_extra,
                            contexts=contexts,
@@ -60,14 +63,39 @@ def stage_exec():
 
 @app.post('/tasks/<int:task_id>')
 def modify_task(task_id):
+    """Chage a given task"""
+    task = get_api().one_task(task_id)
     if request.form.get("complete"):
-        flash(f"Completed task {task_id}")
+        task.close()
+        flash(f"Completed task {task_id}: {task.export()['name']}")
     if request.form.get("unstage"):
-        flash(f"Unstaged task {task_id}")
-    return redirect(url_for('stage_exec'))
+        task.warm(un=True)
+        flash(f"Unstaged task {task_id}: {task.export()['name']}")
+    if request.form.get("stage"):
+        task.warm()
+        flash(f"Staged task {task_id}: {task.export()['name']}")
+    if request.form.get("push"):
+        current_timeline = task.getsched()
+        timelines = get_api().timelines_native()
+        assert current_timeline
+        assert timelines
+        s1_date_raw = timelines[0]
+        assert s1_date_raw > current_timeline
+        s1_date = s1_date_raw.strftime(DATE_FMT)
+        if len(timelines) > 1:
+            s2_date = timelines[1].strftime(DATE_FMT)
+        else:
+            s2_date = None
+        task.schedule(s1_date_raw)
+        flash(f"Pushed task {task_id}: {task.export()['name']} to {s1_date}-{s2_date}")
+    view_stage = None
+    if request.form.get("mode") == "True":
+        view_stage = "on"
+    return redirect(url_for('stage_exec', stage=view_stage))
 
 @app.post('/tasks/')
 def new_task():
+    """Create a new task in this context active immediately"""
     context = session.get('context')
     assert context
     name = request.form.get('name')
@@ -77,4 +105,3 @@ def new_task():
                                'wakeup': datetime.date.today().isoformat()})
     flash(f"Created task {task.tid}: {name}")
     return redirect(url_for('stage_exec', stage="on"))
-    

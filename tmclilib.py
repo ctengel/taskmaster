@@ -152,16 +152,22 @@ class TMApi:
         """Duplicate a task with given task ID"""
         return self.post('tasks/' + str(tid) + '/action', {'duplicate': True})[1]['id']
 
-    def timelines(self, get_all=False):
+    def timelines(self, get_all=False, force_refresh=False):
         """Return commonly used timelines"""
-        if get_all:
-            return self.get('timelines/')
+        if force_refresh:
+            self.tlcache = [None, None]
         if not self.tlcache[0] \
                 or self.tlcache[0] <= datetime.datetime.now() - datetime.timedelta(minutes=1):
             self.tlcache[0] = datetime.datetime.now()
             self.tlcache[1] = [datetime.datetime.fromisoformat(x['timeline'])
-                               for x in self.get('timelines/')[0:3]]
-        return self.tlcache[1]
+                               for x in self.get('timelines/')]
+        if get_all:
+            return self.tlcache[1]
+        return self.tlcache[1][0:3]
+
+    def timelines_native(self, force_refresh=False):
+        """All timelines in order"""
+        return sorted(self.timelines(get_all=True, force_refresh=force_refresh))
 
     def contexts(self):
         """Return valid contexts"""
