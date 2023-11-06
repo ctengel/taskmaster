@@ -4,6 +4,17 @@ import datetime
 import requests
 
 
+def priority_letter(priority: int) -> str:
+    """Given a numeric priority, return the letter"""
+    if priority is None:
+        return None
+    portion = (priority & 0b00011000) >> 3
+    letter = None
+    if portion:
+        letter = chr(ord("D")-portion)
+    return letter
+
+
 class Task:
     """Single task object that exists in DB"""
     # TODO allow this to be used for new, arbitrary updates, etc
@@ -75,6 +86,63 @@ class Task:
             else:
                 outstr += ' '
         return outstr
+
+    def prioritize(self,
+                   relative: int = None,
+                   letter: str = None,
+                   absolute: int = None) -> tuple[int, str, int]:
+        """Return tuple of change, letter, and numeric priority
+
+        Optionally specify relative=-1 or +1 to increase or decrease priority
+        """
+        # TODO support for letter and absolute
+        assert letter is None
+        assert absolute is None
+        old = self.export()['priority']
+        if old is None:
+            # default is 0
+            old = 0
+        new = None
+        if relative:
+            # we are changing priortu
+            # pull out the letter portion
+            portion = (old & 0b00011000) >> 3
+            if relative > 0:
+                # increase priority
+                if portion < 3:
+                    # we aren't at A yet, so move up
+                    new_portion = portion + 1
+                    new = (old & 0b11100111) + (new_portion << 3)
+                else:
+                    # we are at A so try to move up less significant bits if we can
+                    other_portion = (old & 0b00000110) >> 1
+                    if other_portion < 3:
+                        other_portion = other_portion + 1
+                        new = (old & 0b11111001) + (other_portion << 1)
+            else:
+                # decrease priority
+                if old & 0b11100000:
+                    # we have some higher bits set, so downgrade to B regardless of current letter
+                    new = 0b00010000
+                else:
+                    # we have no more significant bits set
+                    if portion == 1:
+                        # current priority is C, so set to base C
+                        new = 0b00001000
+                    elif portion == 0:
+                        # we are already at null and won't get any lower
+                        pass
+                    else:
+                        # we are at A or B, so lower to base that
+                        new_portion = portion - 1
+                        new = new_portion << 3
+        if new is None:
+            # just keep the same for math
+            new = old
+        else:
+            # change in server
+            self.update({'priority': new})
+        return new - old, priority_letter(new), new
 
 
 class TMApi:

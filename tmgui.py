@@ -4,7 +4,7 @@ import secrets
 import datetime
 import os
 from flask import Flask, g, flash, session, request, render_template, redirect, url_for
-from tmclilib import TMApi
+import tmclilib
 
 DATE_FMT = "%a %d %b"
 
@@ -14,7 +14,7 @@ app.secret_key = secrets.token_hex()
 def get_api():
     """Get TM Client object"""
     if 'api' not in g:
-        g.api = TMApi(os.environ['TMAPIURL'])
+        g.api = tmclilib.TMApi(os.environ['TMAPIURL'])
     return g.api
 
 
@@ -42,6 +42,7 @@ def stage_exec():
             task["due_date"] = datetime.datetime.fromisoformat(task["due"]).strftime(DATE_FMT)
         else:
             task["due_date"] = None
+        task["prilet"] = tmclilib.priority_letter(task["priority"])
     timelines = get_api().timelines_native()
     if timelines:
         s1_date = timelines[0].strftime(DATE_FMT)
@@ -88,6 +89,19 @@ def modify_task(task_id):
             s2_date = None
         task.schedule(s1_date_raw)
         flash(f"Pushed task {task_id}: {task.export()['name']} to {s1_date}-{s2_date}")
+    if request.form.get("priup") or request.form.get("pridn"):
+        relative = -1
+        if request.form.get("priup"):
+            relative = 1
+        _, old_letter, old_priority = task.prioritize()
+        direction, new_letter, new_priority = task.prioritize(relative)
+        message = "Same"
+        if direction > 1:
+            message = "Raised"
+        elif direction < 1:
+            message = "Lowered"
+        flash(f"{message} priority {task_id}: {task.export()['name']} "
+              f"from {old_letter}/{old_priority} to {new_letter}/{new_priority}")
     view_stage = None
     if request.form.get("mode") == "True":
         view_stage = "on"

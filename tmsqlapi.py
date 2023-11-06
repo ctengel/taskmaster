@@ -178,7 +178,7 @@ class TaskList(flask_restx.Resource):
             return mode_many(Task.query.filter(Task.closed != None).order_by(Task.closed.desc()).all(), 'closed')
         if mymo == 'execute':
             # TODO accept a context? or warm stays warm always?
-            return mode_many(Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority).all(), 'execute')
+            return mode_many(Task.query.filter_by(warm=True, closed=None).order_by(Task.frog.desc(), Task.priority.desc()).all(), 'execute')
         if mymo == 'stage':
             # TODO should this include warm?
             comprar = datetime.datetime.now()
@@ -188,13 +188,13 @@ class TaskList(flask_restx.Resource):
                 mtl = Task.query.filter(Task.closed == None,
                                         Task.context == args['context'],
                                         Task.wakeup <= comprar).order_by(Task.frog.desc(),
-                                                                         Task.priority,
+                                                                         Task.priority.desc(),
                                                                          Task.urgent.desc(),
                                                                          Task.important.desc()).all()
             else:
                 mtl = Task.query.filter(Task.closed == None,
                                         Task.wakeup <= comprar).order_by(Task.frog.desc(),
-                                                                         Task.priority,
+                                                                         Task.priority.desc(),
                                                                          Task.urgent.desc(),
                                                                          Task.important.desc()).all()
             return mode_many(mtl, 'stage', fut=comprar)
