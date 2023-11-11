@@ -31,7 +31,7 @@ def stage_exec():
     else:
         context = session.get('context')
     if not context:
-        return 'pick a context'
+        return render_template('contexts.html', contexts=contexts)
     assert context in contexts
     mode = 'stage' if stage else 'execute'
     pass_context = context if stage else None

@@ -27,11 +27,29 @@
 
 <p>{{ today }}</p>
 
-<ul>
-	{% for task in tasks %}
-	<li>{% if task.prilet %}{{task.prilet}} {% endif %}{% if (not stage and task.context == context) or (stage and task.warm) %}<strong>{% endif %}{{ task.name }}{% if  (not stage and task.context == context) or (stage and task.warm)  %}</strong>{% endif %}{% if task.context != context %} (<a href="{{url_for('stage_exec', context=task.context)}}">{{task.context}}</a>){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}<form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST"><input type="submit" name="priup" value="&#8593;" /><input type="submit" name="pridn" value="&#8595;" /><input type="submit" name="complete" value="&check;" />{% if task.warm %}<input type="submit" name="unstage" value="X" />{% else %}<input type="submit" name="stage" value="S" /><input type="submit" name="push" value="&#128197;" />{% endif %}<input type="hidden" name="mode" value="{{stage}}" /></form></li>
-	{% endfor %}
-</ul>
+<table>
+
+	<tr>
+		<th>P</th>
+		<th>Task</th>
+		<th>Act</th>
+	</tr>
+
+{% for task in tasks %}
+	<tr>
+		<td>{% if task.prilet %}{{task.prilet}}{% endif %}</td>
+		<td>{% if (not stage and task.context == context) or (stage and task.warm) %}<strong>{% endif %}{{ task.name }}{% if  (not stage and task.context == context) or (stage and task.warm)  %}</strong>{% endif %}{% if task.context != context %} (<a href="{{url_for('stage_exec', context=task.context)}}">{{task.context}}</a>){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}</td>
+		<td><form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST">
+			<input type="submit" name="priup" value="&#8593;" />
+			<input type="submit" name="pridn" value="&#8595;" />
+			<input type="submit" name="complete" value="&check;" />
+			{% if task.warm %}<input type="submit" name="unstage" value="X" />{% else %}<input type="submit" name="stage" value="S" /> <input type="submit" name="push" value="&#128197;" />{% endif %}
+			<input type="hidden" name="mode" value="{{stage}}" />
+		</form></td>
+	</tr>
+{% endfor %}
+
+</table>
 
 {% if stage %}
 <p><a href="{{url_for('stage_exec')}}">FOCUS</a></p>
