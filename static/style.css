@@ -2,3 +2,4 @@ table.tasks { width: 100%; }
 table.tasks tr:nth-child(even) { background-color: lightgray; }
 td.act { white-space: nowrap; }
 #td.task { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+body, input, select { font-size: xxx-large; }
