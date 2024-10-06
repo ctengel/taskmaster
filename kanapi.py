@@ -67,7 +67,7 @@ def get_list(*, session: Session = Depends(get_session), list_id: int):
     return list_
 
 @app.post("/lists/{list_id}/cards/", response_model=Card)
-def get_card(*, session: Session = Depends(get_session), list_id: int, card: Card):
+def post_card(*, session: Session = Depends(get_session), list_id: int, card: Card):
     if not session.get(List, list_id):
         raise HTTPException(status_code=404)
     card.list_id = list_id
@@ -75,3 +75,10 @@ def get_card(*, session: Session = Depends(get_session), list_id: int, card: Car
     session.commit()
     session.refresh(card)
     return card
+
+@app.post("/lists/", response_model=List)
+def post_list(*, session: Session = Depends(get_session), list_: List):
+    session.add(list_)
+    session.commit()
+    session.refresh(list_)
+    return list_
