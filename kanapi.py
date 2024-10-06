@@ -32,7 +32,7 @@ class Card(SQLModel, table=True):
     card_id: int = Field(primary_key = True)
     card_name: str
     card_due: Optional[datetime.date] = None
-    category_id: int = Field(foreign_key="app.category_id")
+    category_id: int = Field(foreign_key="category.category_id")
     list_id: int = Field(foreign_key="list.list_id")
     list_order: Optional[int] = None
     card_open: Optional[datetime.date] = None
