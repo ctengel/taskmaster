@@ -28,7 +28,7 @@
 
 <p>{{ today }}</p>
 
-<table>
+<table class="tasks">
 
 	<tr>
 		<th>P</th>
@@ -38,9 +38,9 @@
 
 {% for task in tasks %}
 	<tr>
-		<td>{% if task.prilet %}{{task.prilet}}{% endif %}</td>
-		<td>{% if (not stage and task.context == context) or (stage and task.warm) %}<strong>{% endif %}{{ task.name }}{% if  (not stage and task.context == context) or (stage and task.warm)  %}</strong>{% endif %}{% if task.context != context %} (<a href="{{url_for('stage_exec', context=task.context)}}">{{task.context}}</a>){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}</td>
-		<td><form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST">
+		<td class="pri">{% if task.prilet %}{{task.prilet}}{% endif %}</td>
+		<td class="task">{% if (not stage and task.context == context) or (stage and task.warm) %}<strong>{% endif %}{{ task.name }}{% if  (not stage and task.context == context) or (stage and task.warm)  %}</strong>{% endif %}{% if task.context != context %} (<a href="{{url_for('stage_exec', context=task.context)}}">{{task.context}}</a>){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}</td>
+		<td class="act"><form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST">
 			<input type="submit" name="priup" value="&#8593;" />
 			<input type="submit" name="pridn" value="&#8595;" />
 			<input type="submit" name="complete" value="&check;" />
