@@ -46,6 +46,9 @@ class Card(SQLModel, table=True):
     card_duplicate: bool = False
     card_pom_tgt: Optional[int] = None
 
+class ListWithCards(List):
+    cards: list[Card] = []
+
 connect_args = {"check_same_thread": False}
 engine = create_engine(SQLITE_URL, echo=True, connect_args=connect_args)
 
