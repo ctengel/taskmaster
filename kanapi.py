@@ -3,7 +3,7 @@
 import datetime
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
-from sqlmodel import Field, SQLModel, Session, create_engine
+from sqlmodel import Field, SQLModel, Session, create_engine, Relationship
 
 SQLITE_FILE = 'kanban.test.db'
 SQLITE_URL = f"sqlite:///{SQLITE_FILE}"
@@ -20,9 +20,8 @@ class Board(SQLModel, table=True):
     user: Optional[str] = None
     category_id: Optional[int] = Field(default=None, foreign_key="category.category_id")
 
-class List(SQLModel, table=True):
+class ListBase(SQLModel):
     """A list of cards that may be on a Board"""
-    list_id: int = Field(primary_key = True)
     list_name: str
     board_order: Optional[int] = None
     category_id: Optional[int] = Field(default=None, foreign_key="category.category_id")
@@ -33,8 +32,16 @@ class List(SQLModel, table=True):
     board_summary: bool = False
     list_poms_disp: bool = False
 
+
+class List(ListBase, table=True):
+    """A table of lists"""
+    list_id: int | None = Field(primary_key=True, default=None)
+    cards: list["Card"] = Relationship()  # TODO back-populates
+
+
 class Card(SQLModel, table=True):
     """An index card or task"""
+    # TODO list relationship
     card_id: int = Field(primary_key = True)
     card_name: str
     card_due: Optional[datetime.date] = None
@@ -46,7 +53,9 @@ class Card(SQLModel, table=True):
     card_duplicate: bool = False
     card_pom_tgt: Optional[int] = None
 
-class ListWithCards(List):
+class ListWithCards(ListBase):
+    """A list that includes details of cards on it"""
+    list_id: int
     cards: list[Card] = []
 
 connect_args = {"check_same_thread": False}
@@ -71,13 +80,13 @@ def on_startup():
     """Startup of app function that ensures schema creation"""
     create_db_and_tables()
 
-@app.get("/lists/{list_id}", response_model=List)
+@app.get("/lists/{list_id}", response_model=ListWithCards)
 def get_list(*, session: Session = Depends(get_session), list_id: int):
     """Get a list of cards by ID"""
+    # TODO order cards
     list_ = session.get(List, list_id)
     if not list_:
         raise HTTPException(status_code=404)
-    # TODO add cards
     return list_
 
 @app.post("/lists/{list_id}/cards/", response_model=Card)
@@ -93,12 +102,13 @@ def post_card(*, session: Session = Depends(get_session), list_id: int, card: Ca
     return card
 
 @app.post("/lists/", response_model=List)
-def post_list(*, session: Session = Depends(get_session), list_: List):
+def post_list(*, session: Session = Depends(get_session), list_: ListBase):
     """Create a list"""
-    session.add(list_)
+    db_list = List.model_validate(list_)
+    session.add(db_list)
     session.commit()
-    session.refresh(list_)
-    return list_
+    session.refresh(db_list)
+    return db_list
 
 @app.post("/categories/", response_model=Category)
 def post_category(*, session: Session = Depends(get_session), category_: Category):
