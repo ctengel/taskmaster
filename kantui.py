@@ -1,10 +1,25 @@
+#!/usr/bin/env python3
 """A TUI for KanBan using Textual"""
 
 from typing import Any
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header, Button
+from textual.widgets import Footer, Header, Button, Input, Pretty
 from textual.containers import HorizontalScroll, VerticalScroll
+from textual.screen import ModalScreen
 import requests
+
+DEFAULT_CATEGORY = 1
+
+class CardEdit(ModalScreen[str]):
+    """Ask user for text of card"""
+
+    def compose(self) -> ComposeResult:
+        yield Input()
+
+    def on_input_submitted(self) -> None:
+        """Exit screen with input value"""
+        self.dismiss(self.query_one(Input).value)
+
 
 class KanList(VerticalScroll):
     """A vertically scrolling kanban column of cards"""
@@ -18,6 +33,14 @@ class KanList(VerticalScroll):
         for card in cards:
             yield Button(card['card_name'])
 
+    def add_card(self, card_name, category_id):
+        """Add a card with a given name to this list"""
+        requests.post(f"{self.kba_url}/cards/",
+                      json={'card_name': card_name,
+                            'category_id': category_id},
+                      timeout=2)
+        self.mount(Button(card_name))
+
 
 class KanBanApp(App):
     """A Textual app to manage KanBan boards"""
@@ -25,6 +48,7 @@ class KanBanApp(App):
     CSS_PATH = "kantui.tcss"
 
     #BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
+    BINDINGS = [("n", "new_card", "Add a new card here")]
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -38,6 +62,20 @@ class KanBanApp(App):
     #    self.theme = (
     #        "textual-dark" if self.theme == "textual-light" else "textual-light"
     #    )
+
+    def action_new_card(self) -> None:
+        """Add a card"""
+        lists = self.query("KanList")
+
+        #print(lists.results())
+        tgt_list = lists.last()
+        #tgt_list = list(lists.results())[1]
+
+        def add_card_callback(card_text: str | None) -> None:
+            """Called when card edit completes"""
+            tgt_list.add_card(card_text, DEFAULT_CATEGORY)
+
+        self.push_screen(CardEdit(), add_card_callback)
 
 
 if __name__ == "__main__":
