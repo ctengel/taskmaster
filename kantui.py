@@ -47,7 +47,7 @@ class KanBanApp(App):
 
     CSS_PATH = "kantui.tcss"
 
-    #BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
+    # TODO move one card mode
     BINDINGS = [("n", "new_card", "Add a new card here")]
 
     def compose(self) -> ComposeResult:
@@ -68,6 +68,7 @@ class KanBanApp(App):
         lists = self.query("KanList")
 
         #print(lists.results())
+        # TODO pick the appropriate list
         tgt_list = lists.last()
         #tgt_list = list(lists.results())[1]
 
