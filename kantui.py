@@ -3,7 +3,7 @@
 
 from typing import Any
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header, Button, Input, Pretty
+from textual.widgets import Footer, Header, Button, Input
 from textual.containers import HorizontalScroll, VerticalScroll
 from textual.screen import ModalScreen
 import requests
@@ -47,8 +47,10 @@ class KanBanApp(App):
 
     CSS_PATH = "kantui.tcss"
 
-    # TODO move one card mode
-    BINDINGS = [("n", "new_card", "Add a new card here")]
+    BINDINGS = [("n", "new_card", "Add a new card here"),
+                ("m", "move_card", "Pick up a card to move it")]
+
+    selected_move_card = None
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -65,18 +67,24 @@ class KanBanApp(App):
 
     def action_new_card(self) -> None:
         """Add a card"""
-        lists = self.query("KanList")
 
-        #print(lists.results())
-        # TODO pick the appropriate list
-        tgt_list = lists.last()
-        #tgt_list = list(lists.results())[1]
+        #lists = self.query("KanList")
+        tgt_list = self.focused.parent
 
         def add_card_callback(card_text: str | None) -> None:
             """Called when card edit completes"""
             tgt_list.add_card(card_text, DEFAULT_CATEGORY)
 
         self.push_screen(CardEdit(), add_card_callback)
+
+    def action_move_card(self) -> None:
+        """Begin moving card"""
+        tgt_card = self.focused
+        tgt_card.variant = "primary"
+        self.selected_move_card = tgt_card
+        # TODO switch to a mode where arrow keys let one move the card
+
+
 
 
 if __name__ == "__main__":
