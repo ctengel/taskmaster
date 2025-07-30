@@ -108,17 +108,24 @@ def generate_list_order(existing: list[Card], before: int = None, after: int = N
         return int((max(existing_orders) + MAX_ORDER)/2)
     target_place = existing_orders.index(target_order)
     if before:
-        return int((existing_orders[target_place-1] + target_order))/2
-    return int((existing_orders[target_place+1] + target_order))/2
+        return int((existing_orders[target_place-1] + target_order)/2)
+    return int((existing_orders[target_place+1] + target_order)/2)
+
+def card_list_order(card: Card) -> int:
+    """Given a card, return the order; safe for sorting"""
+    if not card.list_order:
+        return 0
+    return card.list_order
 
 
 @app.get("/lists/{list_id}", response_model=ListWithCards)
 def get_list(*, session: Session = Depends(get_session), list_id: int):
     """Get a list of cards by ID"""
-    # TODO order cards
     list_ = session.get(List, list_id)
     if not list_:
         raise HTTPException(status_code=404)
+    # TODO is there a way to ask SQL to do this for us
+    list_.cards.sort(key=card_list_order)
     return list_
 
 @app.post("/lists/{list_id}/cards/", response_model=Card)
