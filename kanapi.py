@@ -3,7 +3,7 @@
 import datetime
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
-from sqlmodel import Field, SQLModel, Session, create_engine, Relationship
+from sqlmodel import Field, SQLModel, Session, create_engine, Relationship, select
 
 SQLITE_FILE = 'kanban.test.db'
 SQLITE_URL = f"sqlite:///{SQLITE_FILE}"
@@ -207,6 +207,18 @@ def move_card(*, session: Session = Depends(get_session), card_id: int, card_mov
     session.commit()
     session.refresh(card)
     return card
+
+@app.get("/lists/", response_model=list[List])
+def get_lists(*, session: Session = Depends(get_session)):
+    """Get all lists"""
+    lists = session.exec(select(List)).all()
+    return lists
+
+@app.get("/categories/", response_model=list[Category])
+def get_categories(*, session: Session = Depends(get_session)):
+    """Get all categories"""
+    categories = session.exec(select(Category)).all()
+    return categories
 
 # TODO card completion
 # TODO card update
