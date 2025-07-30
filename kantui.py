@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """A TUI for KanBan using Textual"""
 
+import os
 from typing import Any
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Button, Input
@@ -8,7 +9,7 @@ from textual.containers import HorizontalScroll, VerticalScroll
 from textual.screen import ModalScreen
 import requests
 
-KANAPI_URL = 'http://127.0.0.1:8000/'
+KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:8000/')
 DEFAULT_CATEGORY = 1
 
 class CardEdit(ModalScreen[str]):
@@ -85,8 +86,8 @@ class KanBanApp(App):
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        yield HorizontalScroll(KanList(list_url="http://127.0.0.1:8000/lists/1"),
-                               KanList(list_url="http://127.0.0.1:8000/lists/2"))
+        yield HorizontalScroll(KanList(list_url=f"{KANAPI_URL}lists/1"),
+                               KanList(list_url=f"{KANAPI_URL}lists/2"))
 
     #def action_toggle_dark(self) -> None:
     #    """An action to toggle dark mode."""
