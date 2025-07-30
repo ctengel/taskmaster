@@ -3,7 +3,7 @@
 import datetime
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
-from sqlmodel import Field, SQLModel, Session, create_engine, Relationship, select
+from sqlmodel import Field, SQLModel, Session, create_engine, Relationship
 
 SQLITE_FILE = 'kanban.test.db'
 SQLITE_URL = f"sqlite:///{SQLITE_FILE}"
@@ -38,22 +38,31 @@ class ListBase(SQLModel):
 class List(ListBase, table=True):
     """A table of lists"""
     list_id: int | None = Field(primary_key=True, default=None)
-    cards: list["Card"] = Relationship()  # TODO back-populates
+    cards: list["Card"] = Relationship(back_populates="list_")
 
 
-class Card(SQLModel, table=True):
-    """An index card or task"""
-    # TODO list relationship
-    card_id: int = Field(primary_key = True)
+class CardBase(SQLModel):
+    """Base card from which all other cards are modeled"""
     card_name: str
     card_due: Optional[datetime.date] = None
     category_id: int = Field(foreign_key="category.category_id")
-    list_id: int = Field(foreign_key="list.list_id")
     list_order: Optional[int] = None
     card_open: Optional[datetime.date] = None
     card_closed: Optional[datetime.date] = None
     card_duplicate: bool = False
     card_pom_tgt: Optional[int] = None
+
+
+class Card(CardBase, table=True):
+    """An index card or task"""
+    card_id: int = Field(primary_key = True)
+    list_id: int = Field(foreign_key="list.list_id")
+    list_: List = Relationship(back_populates="cards")
+
+class CardWithoutList(CardBase):
+    """A card explicitly without a list... to prevent infinite recursion"""
+    card_id: int
+    list_id: int
 
 class CardMove(SQLModel):
     """A request to move a single card"""
@@ -65,7 +74,7 @@ class CardMove(SQLModel):
 class ListWithCards(ListBase):
     """A list that includes details of cards on it"""
     list_id: int
-    cards: list[Card] = []
+    cards: list[CardWithoutList] = []
 
 connect_args = {"check_same_thread": False}
 engine = create_engine(SQLITE_URL, echo=True, connect_args=connect_args)
@@ -140,18 +149,18 @@ def get_list(*, session: Session = Depends(get_session), list_id: int):
     return list_
 
 @app.post("/lists/{list_id}/cards/", response_model=Card)
-def post_card(*, session: Session = Depends(get_session), list_id: int, card: Card):
+def post_card(*, session: Session = Depends(get_session), list_id: int, card: CardBase):
     """Add a card to a list"""
     list_ = session.get(List, list_id)
     if not list_:
         raise HTTPException(status_code=404)
-    card.list_id = list_id
-    if not card.list_order:
-        card.list_order = generate_list_order(list_.cards)
-    session.add(card)
+    new_card = Card(list_id=list_id, **card.dict())
+    if not new_card.list_order:
+        new_card.list_order = generate_list_order(list_.cards)
+    session.add(new_card)
     session.commit()
-    session.refresh(card)
-    return card
+    session.refresh(new_card)
+    return new_card
 
 @app.post("/lists/", response_model=List)
 def post_list(*, session: Session = Depends(get_session), list_: ListBase):
@@ -184,10 +193,11 @@ def move_card(*, session: Session = Depends(get_session), card_id: int, card_mov
         card.list_order = card_move.list_order
     else:
         assert not (card_move.before_card and card_move.after_card)
-        # TODO refresh (to get correct list) and use list_ relationship i.e. card.list_.cards
-        statement = select(Card).where(Card.list_id == card.list_id)
-        all_cards = list(session.exec(statement))
-        #all_cards = card.list_.cards
+        if card_move.list_id:
+            # NOTE this may be inefficient
+            session.commit()
+            session.refresh(card)
+        all_cards = list(card.list_.cards)
         if card_move.before_card:
             card.list_order = generate_list_order(all_cards, before=card_move.before_card)
         elif card_move.after_card:

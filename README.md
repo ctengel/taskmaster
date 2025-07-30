@@ -1,12 +1,43 @@
 TaskMaster
 ==========
 
-Master your tasks
+Master your tasks - KanBan-style RESTful API for managing tasks as cards
 
-See `legacy` for an old CSV/pyshelve type thing.  The new stuff is all SQL DB with RESTful API.
+- RESTful API based on FastAPI and SQLModel
+- Data model with Boards, Lists, Cards, and Categories
+- API with some CRUD endpoints but some obvious missing
+- TUI to show board of lists
 
-API
----
+Currently an alpha quality software, missing key features, see #93.
+
+See "history" below for how to run "v2" which is currently better.
+
+
+
+Run it
+------
+
+- `git clone https://github.com/ctengel/taskmaster.git`
+- `python3 -m uvicorn kanapi:app --reload`
+- `./kantui.py`
+
+Roadmap
+-------
+
+- WebGUI
+
+History
+-------
+
+The current (v3) KanBan based FastAPI version is the 3rd iteration.
+
+The first (v1/legacy) was an old CSV/pyshelve type thing.  There are limited docs and it is likely to be completely removed shortly, but for now it is available under `legacy/`
+
+The second (v2) was much more feature-rich and RESTful API and SQL based. It also has a decent CLI and WebGUI.
+
+
+### v2 API
+
 
 * /tasks/
   * GET
@@ -19,8 +50,7 @@ API
   * close
   * duplicate
 
-Modes
------
+### v2 Modes
 
 A key new concept here is the idea of "modes" - we don't want to see all our tasks all the time; we want to be able to focus and only occasionally triage, schedule etc.  Here are some steps in the lifecycle of a task:
 
@@ -58,8 +88,8 @@ A key new concept here is the idea of "modes" - we don't want to see all our tas
    * follow up
    * status report
 
-DB
---
+### v2 DB
+
 Main:
 * id
 * Name
@@ -76,11 +106,9 @@ Tags:
 * type - source, context, project, goal, assignee
 * value
 
-### Upgrades
-See `sql/`
+To upgrade DB from one v2.x verision to another see `sql/`
 
-Filters
--------
+### v2 Filters
 * all/None
 * open (all but closed)
 * triage (triage/new; some asleep, wake, warm)
@@ -89,12 +117,9 @@ Filters
 * execute (warm)
 * closed (closed)
 
-How to
-------
+### v2 How to
 
 * Run the API: `$ TMSQLAPI_SETTINGS=sample.cfg python tmsqlapi.py`
 * Run the Client: `$ ./tm2.py -a http://127.0.0.1:5000/ new`
 
-### Install
-
-No `setup.py` yet, but install requires `inquirer`.
+Note that there is no install needed, but client requires `inquirer`.
