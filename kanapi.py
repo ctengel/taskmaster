@@ -91,11 +91,14 @@ def on_startup():
 
 def generate_list_order(existing: list[Card], before: int = None, after: int = None) -> int:
     """Propose a list_order for a new or existing card based on existing items in the list"""
+    # NOTE This may be overly complicated
     assert not (before and after)
     existing_orders = sorted({x.list_order for x in existing if x.list_order is not None})
     if not existing_orders:
+        # If no existing orders, just put it in the middle
         return int((MIN_ORDER + MAX_ORDER)/2)
     if not before and not after:
+        # If no preference has been given, just put it at the end
         return int((max(existing_orders) + MAX_ORDER)/2)
     target_id = before if before else after
     target_cards = [x for x in existing if x.card_id == target_id]
@@ -103,12 +106,20 @@ def generate_list_order(existing: list[Card], before: int = None, after: int = N
     target_card = target_cards[0]
     target_order = target_card.list_order
     if target_order is None:
+        # If the card we want to go before/after doesn't have an order,
+        #   just put at beginning or end
         if before:
             return int((min(existing_orders) + MIN_ORDER)/2)
         return int((max(existing_orders) + MAX_ORDER)/2)
+    # Finally, if we can find our rightful place, insert appropriately,
+    #   careful to take into account we may be first or last
     target_place = existing_orders.index(target_order)
     if before:
+        if target_place == 0:
+            return int((MIN_ORDER + target_order)/2)
         return int((existing_orders[target_place-1] + target_order)/2)
+    if target_place == len(existing_orders) - 1:
+        return int((MAX_ORDER + target_order)/2)
     return int((existing_orders[target_place+1] + target_order)/2)
 
 def card_list_order(card: Card) -> int:
