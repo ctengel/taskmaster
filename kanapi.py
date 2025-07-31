@@ -53,6 +53,13 @@ class CardBase(SQLModel):
     card_pom_tgt: Optional[int] = None
 
 
+class CardPatch(SQLModel):
+    """Card Patch"""
+    card_name: str | None = None
+    card_due: Optional[datetime.date] = None
+    card_pom_tgt: Optional[int] = None
+
+
 class Card(CardBase, table=True):
     """An index card or task"""
     card_id: int = Field(primary_key = True)
@@ -235,6 +242,18 @@ def close_card(*, session: Session = Depends(get_session), card_id: int, card_cl
     session.refresh(card)
     return card
 
+@app.patch("/cards/{card_id}", response_model=Card)
+def patch_card(*, session: Session = Depends(get_session), card_id: int, card_patch: CardPatch):
+    """Update certian fields in a card"""
+    card = session.get(Card, card_id)
+    if not card:
+        raise HTTPException(status_code=404)
+    card_data = card_patch.model_dump(exclude_unset=True)
+    card.sqlmodel_update(card_data)
+    #session.add(card)
+    session.commit()
+    session.refresh(card)
+    return card
 
 @app.get("/lists/", response_model=list[List])
 def get_lists(*, session: Session = Depends(get_session)):
