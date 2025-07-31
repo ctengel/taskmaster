@@ -71,6 +71,10 @@ class CardMove(SQLModel):
     after_card: Optional[int] = None
     before_card: Optional[int] = None
 
+class CardClose(SQLModel):
+    """A request to close a card"""
+    list_id: Optional[int] = None
+
 class ListWithCards(ListBase):
     """A list that includes details of cards on it"""
     list_id: int
@@ -157,6 +161,7 @@ def post_card(*, session: Session = Depends(get_session), list_id: int, card: Ca
     new_card = Card(list_id=list_id, **card.dict())
     if not new_card.list_order:
         new_card.list_order = generate_list_order(list_.cards)
+    new_card.card_open = datetime.date.today()
     session.add(new_card)
     session.commit()
     session.refresh(new_card)
@@ -208,6 +213,29 @@ def move_card(*, session: Session = Depends(get_session), card_id: int, card_mov
     session.refresh(card)
     return card
 
+@app.post("/cards/{card_id}/close", response_model=Card)
+def close_card(*, session: Session = Depends(get_session), card_id: int, card_close: CardClose):
+    """Complete a task"""
+    # TODO duplicate
+    card = session.get(Card, card_id)
+    list_ = None
+    if card_close.list_id:
+        list_ = session.get(List, card_close.list_id)
+        assert list_.list_closed
+        card.list_id = list_.list_id
+    else:
+        if not card.list_.list_closed:
+            # TODO category?
+            statement = select(List).where(List.list_closed)
+            list_ = session.exec(statement).one()
+            card.list_id = list_.list_id
+    card.card_closed = datetime.date.today()
+    card.list_order = None
+    session.commit()
+    session.refresh(card)
+    return card
+
+
 @app.get("/lists/", response_model=list[List])
 def get_lists(*, session: Session = Depends(get_session)):
     """Get all lists"""
@@ -220,6 +248,5 @@ def get_categories(*, session: Session = Depends(get_session)):
     categories = session.exec(select(Category)).all()
     return categories
 
-# TODO card completion
 # TODO card update
 # TODO mass list update - split or move
