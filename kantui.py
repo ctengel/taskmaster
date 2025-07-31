@@ -78,7 +78,9 @@ class KanBanApp(App):
                 ("a", "left_list", "<"),
                 ("d", "right_list", ">"),
                 ("w", "up_card", "^"),
-                ("s", "down_card", "v")]
+                ("s", "down_card", "v"),
+                ("c", "close_card", "Close"),
+                ("e", "edit_card", "Edit")]
 
     selected_move_card = None
 
@@ -88,6 +90,7 @@ class KanBanApp(App):
         yield Footer()
         yield HorizontalScroll(KanList(list_url=f"{KANAPI_URL}lists/1"),
                                KanList(list_url=f"{KANAPI_URL}lists/2"))
+        # TODO focus on a card
 
     #def action_toggle_dark(self) -> None:
     #    """An action to toggle dark mode."""
@@ -95,11 +98,25 @@ class KanBanApp(App):
     #        "textual-dark" if self.theme == "textual-light" else "textual-light"
     #    )
 
+    def current_card(self) -> KanCard:
+        """Get current card or None"""
+        if isinstance(self.focused, KanCard):
+            return self.focused
+        return None
+
+    def current_list(self) -> KanList:
+        """Get current list or None"""
+        card = self.current_card()
+        if card:
+            return card.parent
+        return None
+
     def action_new_card(self) -> None:
         """Add a card"""
 
-        #lists = self.query("KanList")
-        tgt_list = self.focused.parent
+        tgt_list = self.current_card()
+        if not tgt_list:
+            return
 
         def add_card_callback(card_text: str | None) -> None:
             """Called when card edit completes"""
@@ -124,7 +141,9 @@ class KanBanApp(App):
             self.selected_move_card.variant = 'default'
             self.selected_move_card = None
         else:
-            tgt_card = self.focused
+            tgt_card = self.current_card()
+            if not tgt_card:
+                return
             tgt_card.variant = "primary"
             self.selected_move_card = tgt_card
 
@@ -134,8 +153,11 @@ class KanBanApp(App):
         Takes into account both simply moving the cursor as well as moving a card
         Handles both moving up and down a list and switching between lists
         """
-        curr_card = self.focused
-        curr_list = self.focused.parent
+        # TODO refactor/simplify
+        curr_card = self.current_card()
+        curr_list = self.current_list()
+        if not (curr_card and curr_list):
+            return
         tgt_list = None
         curr_pos = None
         curr_list_pos = None
@@ -144,11 +166,19 @@ class KanBanApp(App):
             for index, item in enumerate(curr_list.parent.children):
                 if item.kba_url == curr_list.kba_url:
                     curr_list_pos = index
+            if increase and curr_list_pos == len(curr_list.parent.children) - 1:
+                return
+            if not increase and curr_list_pos == 0:
+                return
             tgt_list = curr_list.parent.children[curr_list_pos + 1 if increase
                                                  else curr_list_pos - 1]
         else:
             # Moving within a list, just get the index
             curr_pos = curr_list.get_card_index(curr_card.card_id)
+            if increase and curr_pos == len(curr_list.children) - 1:
+                return
+            if not increase and curr_pos == 0:
+                return
         if self.selected_move_card:
             # Moving a card
             assert curr_card.card_id == self.selected_move_card.card_id
@@ -190,6 +220,21 @@ class KanBanApp(App):
 
     def action_right_list(self) -> None:
         self.arrow_key(True, True)
+
+    def action_close_card(self) -> None:
+        """Close the current card"""
+        curr_card = self.current_card()
+        if not curr_card:
+            return
+        res = requests.post(f"{KANAPI_URL}cards/{curr_card.card_id}/close",
+                            json={})
+        # TODO can we avoid all-out-refresh?
+        self.selected_move_card = None
+        self.refresh(recompose=True)
+
+    def action_edit_card(self) -> None:
+        """Edit the current card"""
+        pass
 
 
 if __name__ == "__main__":
