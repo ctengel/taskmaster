@@ -15,8 +15,14 @@ DEFAULT_CATEGORY = 1
 class CardEdit(ModalScreen[str]):
     """Ask user for text of card"""
 
+    default_text = None
+
+    def __init__(self, *args: Any, default_text: str = None, **kwargs: Any):
+        self.default_text = default_text
+        super().__init__(*args, **kwargs)
+
     def compose(self) -> ComposeResult:
-        yield Input()
+        yield Input(self.default_text)
 
     def on_input_submitted(self) -> None:
         """Exit screen with input value"""
@@ -33,6 +39,15 @@ class KanCard(Button):
         self.card_id = card_json['card_id']
         self.manipalated = False
         super().__init__(card_json['card_name'], *args, **kwargs)
+
+    def update_card(self, new_text):
+        """Update card text both on screen and in API"""
+        assert not self.manipalated
+        result = requests.patch(f"{KANAPI_URL}cards/{self.card_id}",
+                                json={"card_name": new_text})
+        self.card_json = result.json()
+        self.label = self.card_json['card_name']
+
 
 
 class KanList(VerticalScroll):
@@ -88,6 +103,7 @@ class KanBanApp(App):
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
+        # TODO configurable board
         yield HorizontalScroll(KanList(list_url=f"{KANAPI_URL}lists/1"),
                                KanList(list_url=f"{KANAPI_URL}lists/2"))
         # TODO focus on a card
@@ -114,7 +130,7 @@ class KanBanApp(App):
     def action_new_card(self) -> None:
         """Add a card"""
 
-        tgt_list = self.current_card()
+        tgt_list = self.current_list()
         if not tgt_list:
             return
 
@@ -123,6 +139,21 @@ class KanBanApp(App):
             tgt_list.add_card(card_text, DEFAULT_CATEGORY)
 
         self.push_screen(CardEdit(), add_card_callback)
+
+    def action_edit_card(self) -> None:
+        """Edit the current card"""
+
+        assert not self.selected_move_card
+
+        tgt_card = self.current_card()
+        if not tgt_card:
+            return
+
+        def edit_card_callback(card_text: str | None) -> None:
+            """Called when card edit completes"""
+            tgt_card.update_card(card_text)
+
+        self.push_screen(CardEdit(default_text=tgt_card.card_json["card_name"]), edit_card_callback)
 
     def action_move_card(self) -> None:
         """Begin moving card"""
@@ -134,7 +165,7 @@ class KanBanApp(App):
                     json_payl['before_card'] = self.selected_move_card.parent.children[1].card_id
                 else:
                     json_payl['after_card'] = self.selected_move_card.parent.children[idx-1].card_id
-                result = requests.post(KANAPI_URL + '/cards/' + str(self.selected_move_card.card_id) + '/move',
+                result = requests.post(f"{KANAPI_URL}cards/{self.selected_move_card.card_id}/move",
                                        json=json_payl)
                 self.selected_move_card.card_json = result.json()
                 self.selected_move_card.manipalated = False
@@ -231,10 +262,6 @@ class KanBanApp(App):
         # TODO can we avoid all-out-refresh?
         self.selected_move_card = None
         self.refresh(recompose=True)
-
-    def action_edit_card(self) -> None:
-        """Edit the current card"""
-        pass
 
 
 if __name__ == "__main__":
