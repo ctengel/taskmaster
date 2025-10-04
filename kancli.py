@@ -23,7 +23,7 @@ def list_(list_id: int, category_id: int = None, tabbed: bool = False, csv_: boo
         print(card['card_name'])
 
 @app.command()
-def add(list_id: int, catagory_id: int, card: str = None):
+def add(list_id: int, category_id: int, card: str = None):
     """Add a given card"""
     # TODO allow input multiple cards via standard input
     # TODO make usage kancli add -l LIST_ID -c CONTEXT_ID [card text]
