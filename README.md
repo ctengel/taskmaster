@@ -18,8 +18,8 @@ Run it
 ------
 
 - `git clone https://github.com/ctengel/taskmaster.git`
-- `python3 -m uvicorn kanapi:app --reload`
-- `./kantui.py`
+- `fastapi dev --port 29325 kanapi.py`
+- `KANAPI_URL=http://127.0.0.1:29325/ ./kantui.py`
 
 Roadmap
 -------

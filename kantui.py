@@ -9,7 +9,7 @@ from textual.containers import HorizontalScroll, VerticalScroll
 from textual.screen import ModalScreen
 import requests
 
-KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:8000/')
+KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
 DEFAULT_CATEGORY = 1
 
 class CardEdit(ModalScreen[str]):
