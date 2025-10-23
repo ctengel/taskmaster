@@ -78,6 +78,18 @@ class CardMove(SQLModel):
     after_card: Optional[int] = None
     before_card: Optional[int] = None
 
+class ListMove(SQLModel):
+    """A request to split/merge/move a list"""
+    # TODO add selectors to split part of list
+    # TODO something to control whether we go to front or back of dest list
+    list_id: Optional[int] = None  # NOTE this is the destination list
+    category_id: Optional[int] = None  # NOTE this will filter the items
+    delete: Optional[bool] = False
+
+class ListMoveResult(SQLModel):
+    """Result of moving a list"""
+    success: Optional[bool] = True
+
 class CardClose(SQLModel):
     """A request to close a card"""
     list_id: Optional[int] = None
@@ -267,4 +279,20 @@ def get_categories(*, session: Session = Depends(get_session)):
     categories = session.exec(select(Category)).all()
     return categories
 
-# TODO mass list update - split or move
+@app.post("/lists/{list_id}/move", response_model=ListMoveResult)
+def move_list(*, session: Session = Depends(get_session), list_id: int, directions: ListMove):
+    """Perform a bulk operation on a list, often merging all/part with another"""
+    # TODO implement all CardMove features
+    assert directions.list_id
+    assert not directions.delete
+    assert not directions.category_id
+    start_list = session.get(List, list_id)
+    if not start_list:
+        raise HTTPException(status_code=404)
+    end_list = session.get(List, directions.list_id)
+    if not end_list:
+        raise HTTPException(status_code=400)  # TODO correct
+    for card in start_list.cards:
+        card.list_id = end_list.list_id
+    session.commit()
+    return ListMoveResult()  # TODO boring...

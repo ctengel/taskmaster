@@ -74,7 +74,7 @@ def lists():
                            timeout=1)
     result.raise_for_status()
     for item in result.json():
-        print(item['list_id'], item['list_name'])
+        print(item['list_id'], item['list_name'], item['list_wakeup'])
 
 @app.command()
 def categories():
@@ -84,6 +84,15 @@ def categories():
     result.raise_for_status()
     for item in result.json():
         print(item['category_id'], item['category_name'])
+
+@app.command()
+def merge(source_list: int, dest_list: int):
+    """Merge one list into another"""
+    result = requests.post(f"{KANAPI_URL}lists/{source_list}/move",
+                           json={'list_id': dest_list},
+                           timeout=5)
+    result.raise_for_status()
+
 
 if __name__ == "__main__":
     app()
