@@ -2,6 +2,7 @@
 """Client for KanBan API"""
 
 import os
+import datetime
 import requests
 import typer
 
@@ -52,11 +53,16 @@ def new_category(category_name: str):
     print(result.json()['category_id'])
 
 @app.command()
-def new_list(list_name: str, category_id: int = None, closed: bool = False):
+def new_list(list_name: str,
+             category_id: int = None,
+             closed: bool = False,
+             wakeup: datetime.datetime = None):
     """create a new list"""
-    # TODO respect category and closed switches
     result = requests.post(f"{KANAPI_URL}lists/",
-                           json={'list_name': list_name},
+                           json={'list_name': list_name,
+                                 'list_closed': closed,
+                                 'category_id': category_id,
+                                 'list_wakeup': wakeup.date().isoformat() if wakeup else None},
                            timeout=2)
     result.raise_for_status()
     print(result.json()['list_id'])
