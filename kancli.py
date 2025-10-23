@@ -18,7 +18,6 @@ def list_(list_id: int, category_id: int = None, tabbed: bool = False, csv_: boo
     # TODO csv output... allow offline completion/moving?
     result = requests.get(f"{KANAPI_URL}lists/{list_id}", timeout=1)
     result.raise_for_status()
-    #print(result['list_name'])
     for card in result.json()['cards']:
         print(card['card_name'])
 
@@ -32,7 +31,7 @@ def add(list_id: int, category_id: int, card: str = None):
                                  'category_id': category_id},
                            timeout=2)
     result.raise_for_status()
-    # TODO output card ID
+    print(result.json()['card_id'])
 
 @app.command()
 def import_(list_id: int, file_name: str, category_id: int = None, t: bool = False):
@@ -62,6 +61,23 @@ def new_list(list_name: str, category_id: int = None, closed: bool = False):
     result.raise_for_status()
     print(result.json()['list_id'])
 
+@app.command()
+def lists():
+    """Return all lists with their IDs"""
+    result = requests.get(f"{KANAPI_URL}lists/",
+                           timeout=1)
+    result.raise_for_status()
+    for item in result.json():
+        print(item['list_id'], item['list_name'])
+
+@app.command()
+def categories():
+    """Return all categories with their IDs"""
+    result = requests.get(f"{KANAPI_URL}categories/",
+                           timeout=1)
+    result.raise_for_status()
+    for item in result.json():
+        print(item['category_id'], item['category_name'])
 
 if __name__ == "__main__":
     app()

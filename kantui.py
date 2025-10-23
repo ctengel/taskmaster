@@ -2,6 +2,7 @@
 """A TUI for KanBan using Textual"""
 
 import os
+import argparse
 from typing import Any
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Button, Input
@@ -98,14 +99,20 @@ class KanBanApp(App):
                 ("e", "edit_card", "Edit")]
 
     selected_move_card = None
+    kan_list_ids = []
+    kan_category_id = None
+
+    def __init__(self, *args: Any, lists: list[int] = None, category: int = None, **kwargs: Any):
+        self.kan_list_ids = lists
+        self.kan_category_id = category
+        super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         yield Header()
         yield Footer()
-        # TODO configurable board
-        yield HorizontalScroll(KanList(list_url=f"{KANAPI_URL}lists/1"),
-                               KanList(list_url=f"{KANAPI_URL}lists/2"))
+        lizts = [KanList(list_url=f"{KANAPI_URL}/lists/{x}") for x in self.kan_list_ids]
+        yield HorizontalScroll(*lizts)
         # TODO focus on a card
 
     #def action_toggle_dark(self) -> None:
@@ -134,9 +141,13 @@ class KanBanApp(App):
         if not tgt_list:
             return
 
+        new_category_id = DEFAULT_CATEGORY
+        if self.kan_category_id:
+            new_category_id = self.kan_category_id
+
         def add_card_callback(card_text: str | None) -> None:
             """Called when card edit completes"""
-            tgt_list.add_card(card_text, DEFAULT_CATEGORY)
+            tgt_list.add_card(card_text, new_category_id)
 
         self.push_screen(CardEdit(), add_card_callback)
 
@@ -265,5 +276,10 @@ class KanBanApp(App):
 
 
 if __name__ == "__main__":
-    app = KanBanApp()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--category")
+    parser.add_argument("lists", nargs="+")
+    cargs = parser.parse_args()
+    app = KanBanApp(lists=[int(x) for x in cargs.lists],
+                    category=(int(cargs.category) if cargs.category else None))
     app.run()

@@ -267,5 +267,4 @@ def get_categories(*, session: Session = Depends(get_session)):
     categories = session.exec(select(Category)).all()
     return categories
 
-# TODO card update
 # TODO mass list update - split or move
