@@ -20,11 +20,41 @@ Run it
 - `git clone https://github.com/ctengel/taskmaster.git`
 - `fastapi dev --port 29325 kanapi.py`
 - `KANAPI_URL=http://127.0.0.1:29325/ ./kantui.py`
+- `KANAPI_URL=http://127.0.0.1:29325/ ./kancli.py --help`
+
+### Recommended setup
+
+Create categories:
+1. Home
+2. Work
+etc...
+
+Create a few lists as follows:
+1. Inbox
+2. Complete
+3. Doing
+4. Ready/Must
+5. In waiting/ bullpen
+6. Active backlog
+7. Someday
+
+Next, go ahead and create any sleeping lists for stuff way out in th future.
+
+### Import data
+
+From there you can now add any existing data you want to keep.  If you have an existing v0.2 tm instance...
+
+1. Load all data from existing instance `GET /tasks/?mode=all`
+2. Convert to CSV via `mlr --j2c cat`
+3. Play with it in your favorite spreadsheet editor
+4. Import via newtasks stdin to appropriate lists
 
 Roadmap
 -------
 
 - WebGUI
+- packaging
+- server side board definition
 
 History
 -------
