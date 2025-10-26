@@ -3,6 +3,8 @@
 
 import os
 import datetime
+from typing import Annotated
+import sys
 import requests
 import typer
 
@@ -11,7 +13,7 @@ KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
 app = typer.Typer()
 
 
-@app.command()
+@app.command("list")
 def list_(list_id: int, category_id: int = None, tabbed: bool = False, csv_: bool = False):
     """List all cards in a given list"""
     # TODO allow filter via category
@@ -23,18 +25,23 @@ def list_(list_id: int, category_id: int = None, tabbed: bool = False, csv_: boo
         print(card['card_name'])
 
 @app.command()
-def add(list_id: int, category_id: int, card: str = None):
+def add(list_id: Annotated[int, typer.Option()],
+        category_id:  Annotated[int, typer.Option()],
+        card: Annotated[list[str], typer.Argument()] = None):
     """Add a given card"""
-    # TODO allow input multiple cards via standard input
-    # TODO make usage kancli add -l LIST_ID -c CONTEXT_ID [card text]
-    result = requests.post(f"{KANAPI_URL}lists/{list_id}/cards/",
-                           json={'card_name': card,
-                                 'category_id': category_id},
-                           timeout=2)
-    result.raise_for_status()
-    print(result.json()['card_id'])
+    if card:
+        cards = [' '.join(card)]
+    else:
+        cards = [x.strip() for x in sys.stdin]
+    for mycard in cards:
+        result = requests.post(f"{KANAPI_URL}lists/{list_id}/cards/",
+                               json={'card_name': mycard,
+                                     'category_id': category_id},
+                               timeout=2)
+        result.raise_for_status()
+        print(result.json()['card_id'])
 
-@app.command()
+@app.command("import")
 def import_(list_id: int, file_name: str, category_id: int = None, t: bool = False):
     """Import list from a file"""
     # TODO implement (match CSV output of list_()?)
