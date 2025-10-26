@@ -5,7 +5,7 @@ import os
 import argparse
 from typing import Any
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header, Button, Input
+from textual.widgets import Footer, Header, Button, Input, Label
 from textual.containers import HorizontalScroll, VerticalScroll
 from textual.screen import ModalScreen
 import requests
@@ -45,9 +45,11 @@ class KanCard(Button):
         """Update card text both on screen and in API"""
         assert not self.manipalated
         result = requests.patch(f"{KANAPI_URL}cards/{self.card_id}",
-                                json={"card_name": new_text})
+                                json={"card_name": new_text},
+                                timeout=3)
         self.card_json = result.json()
         self.label = self.card_json['card_name']
+
 
 
 
@@ -63,6 +65,7 @@ class KanList(VerticalScroll):
         result = requests.get(self.kba_url, timeout=1).json()
         self.list_id = result['list_id']
         cards = result['cards']
+        yield Label(result['list_name'])
         for card in cards:
             yield KanCard(card_json=card)
 
@@ -74,9 +77,13 @@ class KanList(VerticalScroll):
                                timeout=2)
         self.mount(KanCard(card_json=result.json()))
 
+    def child_cards(self):
+        """Return child cards (omit label)"""
+        return self.children[1:]
+
     def get_card_index(self, card_id: int) -> int:
         """Given a card_id, return its position in the list"""
-        for index, item in enumerate(self.children):
+        for index, item in enumerate(self.child_cards()):
             if item.card_id == card_id:
                 return index
         assert False  # card not found
@@ -173,11 +180,12 @@ class KanBanApp(App):
                 json_payl = {'list_id': self.selected_move_card.parent.list_id}
                 idx = self.selected_move_card.parent.get_card_index(self.selected_move_card.card_id)
                 if idx == 0:
-                    json_payl['before_card'] = self.selected_move_card.parent.children[1].card_id
+                    json_payl['before_card'] = self.selected_move_card.parent.child_cards()[1].card_id
                 else:
-                    json_payl['after_card'] = self.selected_move_card.parent.children[idx-1].card_id
+                    json_payl['after_card'] = self.selected_move_card.parent.child_cards()[idx-1].card_id
                 result = requests.post(f"{KANAPI_URL}cards/{self.selected_move_card.card_id}/move",
-                                       json=json_payl)
+                                       json=json_payl,
+                                       timeout=3)
                 self.selected_move_card.card_json = result.json()
                 self.selected_move_card.manipalated = False
             self.selected_move_card.variant = 'default'
@@ -217,7 +225,7 @@ class KanBanApp(App):
         else:
             # Moving within a list, just get the index
             curr_pos = curr_list.get_card_index(curr_card.card_id)
-            if increase and curr_pos == len(curr_list.children) - 1:
+            if increase and curr_pos == len(curr_list.child_cards()) - 1:
                 return
             if not increase and curr_pos == 0:
                 return
@@ -246,7 +254,7 @@ class KanBanApp(App):
             if list_:
                 tgt_list.query(KanCard).first().focus()
             else:
-                curr_list.children[curr_pos + 1 if increase else curr_pos - 1].focus()
+                curr_list.child_cards()[curr_pos + 1 if increase else curr_pos - 1].focus()
 
     # These 4 functions are event handlers for each key push
     # NOTE there may be a better/cleaner way to do this
@@ -269,7 +277,9 @@ class KanBanApp(App):
         if not curr_card:
             return
         res = requests.post(f"{KANAPI_URL}cards/{curr_card.card_id}/close",
-                            json={})
+                            json={},
+                            timeout=3)
+        res.raise_for_status()
         # TODO can we avoid all-out-refresh?
         self.selected_move_card = None
         self.refresh(recompose=True)
