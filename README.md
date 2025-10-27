@@ -1,12 +1,94 @@
 TaskMaster
 ==========
 
-Master your tasks
+Master your tasks - KanBan-style RESTful API for managing tasks as cards
 
-See `legacy` for an old CSV/pyshelve type thing.  The new stuff is all SQL DB with RESTful API.
+- RESTful API based on FastAPI and SQLModel
+- Data model with Boards, Lists, Cards, and Categories
+- API with some CRUD endpoints but some obvious missing
+- TUI to show board of lists
 
-API
----
+Currently an alpha quality software, missing key features, see #93.
+
+See "history" below for how to run "v2" which is currently better.
+
+
+
+Run it
+------
+
+- `git clone https://github.com/ctengel/taskmaster.git`
+- `fastapi dev --port 29325 kanapi.py`
+- `KANAPI_URL=http://127.0.0.1:29325/ ./kantui.py`
+- `KANAPI_URL=http://127.0.0.1:29325/ ./kancli.py --help`
+
+### Recommended setup
+
+Create categories:
+1. Home
+2. Work
+etc...
+
+Create a few lists as follows:
+1. Inbox
+2. Complete
+3. Doing
+4. Ready/Must
+5. In waiting/ bullpen
+6. Active backlog
+7. Someday
+
+```
+$ ./kancli.py new-list inbox
+1
+$ ./kancli.py new-list --closed done
+2
+$ ./kancli.py new-list doing
+3
+$ ./kancli.py new-list today
+4
+$ ./kancli.py new-list bullpen
+5
+$ ./kancli.py new-list backlog
+6
+$ ./kancli.py new-list someday
+7
+$ ./kancli.py new-list --category-id 1 --wakeup 2026-01-01 nextyear
+8
+```
+
+Next, go ahead and create any sleeping lists for stuff way out in th future.
+
+Typically we would show lists `6 5 4 3 2` in kantui etc.
+
+### Import data
+
+From there you can now add any existing data you want to keep.  If you have an existing v0.2 tm instance...
+
+1. Load all data from existing instance `curl http://taskmasterv02/tasks/?mode=all > taskmaster-v0.2-tasks.json`
+2. Convert to CSV via `mlr --j2c cat taskmaster-v0.2-tasks.json > taskmaster-v0.2-tasks.csv`
+3. Play with it in your favorite spreadsheet editor
+4. Import via newtasks stdin to appropriate lists `./kancli.py add --category-id 1 --list-id 1 < tasks.txt`
+
+Roadmap
+-------
+
+- WebGUI
+- packaging
+- server side board definition
+
+History
+-------
+
+The current (v3) KanBan based FastAPI version is the 3rd iteration.
+
+The first (v1/legacy) was an old CSV/pyshelve type thing.  There are limited docs and it is likely to be completely removed shortly, but for now it is available under `legacy/`
+
+The second (v2) was much more feature-rich and RESTful API and SQL based. It also has a decent CLI and WebGUI.
+
+
+### v2 API
+
 
 * /tasks/
   * GET
@@ -19,8 +101,7 @@ API
   * close
   * duplicate
 
-Modes
------
+### v2 Modes
 
 A key new concept here is the idea of "modes" - we don't want to see all our tasks all the time; we want to be able to focus and only occasionally triage, schedule etc.  Here are some steps in the lifecycle of a task:
 
@@ -58,8 +139,8 @@ A key new concept here is the idea of "modes" - we don't want to see all our tas
    * follow up
    * status report
 
-DB
---
+### v2 DB
+
 Main:
 * id
 * Name
@@ -76,11 +157,9 @@ Tags:
 * type - source, context, project, goal, assignee
 * value
 
-### Upgrades
-See `sql/`
+To upgrade DB from one v2.x verision to another see `sql/`
 
-Filters
--------
+### v2 Filters
 * all/None
 * open (all but closed)
 * triage (triage/new; some asleep, wake, warm)
@@ -89,12 +168,9 @@ Filters
 * execute (warm)
 * closed (closed)
 
-How to
-------
+### v2 How to
 
 * Run the API: `$ TMSQLAPI_SETTINGS=sample.cfg python tmsqlapi.py`
 * Run the Client: `$ ./tm2.py -a http://127.0.0.1:5000/ new`
 
-### Install
-
-No `setup.py` yet, but install requires `inquirer`.
+Note that there is no install needed, but client requires `inquirer`.
