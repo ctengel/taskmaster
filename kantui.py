@@ -179,10 +179,12 @@ class KanBanApp(App):
             if self.selected_move_card.manipalated:
                 json_payl = {'list_id': self.selected_move_card.parent.list_id}
                 idx = self.selected_move_card.parent.get_card_index(self.selected_move_card.card_id)
-                if idx == 0:
-                    json_payl['before_card'] = self.selected_move_card.parent.child_cards()[1].card_id
-                else:
-                    json_payl['after_card'] = self.selected_move_card.parent.child_cards()[idx-1].card_id
+                new_siblings = self.selected_move_card.parent.child_cards()
+                if len(new_siblings) > 1:
+                    if idx == 0:
+                        json_payl['before_card'] = new_siblings[1].card_id
+                    else:
+                        json_payl['after_card'] = new_siblings[idx-1].card_id
                 result = requests.post(f"{KANAPI_URL}cards/{self.selected_move_card.card_id}/move",
                                        json=json_payl,
                                        timeout=3)

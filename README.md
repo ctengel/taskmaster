@@ -38,16 +38,37 @@ Create a few lists as follows:
 6. Active backlog
 7. Someday
 
+```
+$ ./kancli.py new-list inbox
+1
+$ ./kancli.py new-list --closed done
+2
+$ ./kancli.py new-list doing
+3
+$ ./kancli.py new-list today
+4
+$ ./kancli.py new-list bullpen
+5
+$ ./kancli.py new-list backlog
+6
+$ ./kancli.py new-list someday
+7
+$ ./kancli.py new-list --category-id 1 --wakeup 2026-01-01 nextyear
+8
+```
+
 Next, go ahead and create any sleeping lists for stuff way out in th future.
+
+Typically we would show lists `6 5 4 3 2` in kantui etc.
 
 ### Import data
 
 From there you can now add any existing data you want to keep.  If you have an existing v0.2 tm instance...
 
-1. Load all data from existing instance `GET /tasks/?mode=all`
-2. Convert to CSV via `mlr --j2c cat`
+1. Load all data from existing instance `curl http://taskmasterv02/tasks/?mode=all > taskmaster-v0.2-tasks.json`
+2. Convert to CSV via `mlr --j2c cat taskmaster-v0.2-tasks.json > taskmaster-v0.2-tasks.csv`
 3. Play with it in your favorite spreadsheet editor
-4. Import via newtasks stdin to appropriate lists
+4. Import via newtasks stdin to appropriate lists `./kancli.py add --category-id 1 --list-id 1 < tasks.txt`
 
 Roadmap
 -------
