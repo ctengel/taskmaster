@@ -247,6 +247,7 @@ class KanBanApp(App):
                 self.selected_move_card = new_card
             else:
                 # Move around within current container
+                curr_pos += 1  # needed b/c move_child includes header
                 if increase:
                     curr_list.move_child(curr_card, after = curr_pos + 1)
                 else:
