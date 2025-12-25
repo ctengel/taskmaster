@@ -28,6 +28,7 @@
 
 <p>{{ today }}</p>
 
+<!--
 <table class="tasks">
 
 	<tr>
@@ -35,29 +36,25 @@
 		<th>Task</th>
 		<th>Act</th>
 	</tr>
+-->
 
-{% for task in tasks %}
-	<tr>
-		<td class="pri">{% if task.prilet %}{{task.prilet}}{% endif %}</td>
-		<td class="task">{% if (not stage and task.context == context) or (stage and task.warm) %}<strong>{% endif %}{{ task.name }}{% if  (not stage and task.context == context) or (stage and task.warm)  %}</strong>{% endif %}{% if task.context != context %} (<a href="{{url_for('stage_exec', context=task.context)}}">{{task.context}}</a>){% endif %}{% if task.due_date %} (Due {{task.due_date}}){% endif %}</td>
-		<td class="act"><form action="{{ url_for('modify_task', task_id=task.id)}}" method="POST">
+{% for list in tasks %}
+<h1>{{list.list_name}}</h1>
+<ul>
+{% for card in list.cards %}
+<li>{{card.card_name}}</li>
+<!--
 			<input type="submit" name="priup" value="&#8593;" />
 			<input type="submit" name="pridn" value="&#8595;" />
 			<input type="submit" name="complete" value="&check;" />
-			{% if task.warm %}<input type="submit" name="unstage" value="X" />{% else %}<input type="submit" name="stage" value="S" /> <input type="submit" name="push" value="&#128197;" />{% endif %}
-			<input type="hidden" name="mode" value="{{stage}}" />
-		</form></td>
-	</tr>
+			<input type="submit" name="unstage" value="X" />
+			<input type="submit" name="stage" value="S" />
+			<input type="submit" name="push" value="&#128197;" />
+-->
 {% endfor %}
-
-</table>
-
-{% if stage %}
-<p><a href="{{url_for('stage_exec')}}">FOCUS</a></p>
-<p>View next session {{s1_date}} to {{s2_date}}</p>
-{% else %}
-<p><a href="{{url_for('stage_exec', stage='on')}}">Show all {{context}} tasks to be addressed before {{s1_date}}</a></p>
-{% endif %}
+</ul>
+{% endfor %}
+<!-- </table> -->
 
 <form action="{{url_for('new_task')}}" method="POST">
 	<p>

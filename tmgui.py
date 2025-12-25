@@ -4,26 +4,23 @@ import secrets
 import datetime
 import os
 from flask import Flask, g, flash, session, request, render_template, redirect, url_for
-import tmclilib
+import requests
 
+
+KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
+DEFAULT_CATEGORY = 1
+KAN_LISTS = [6, 5, 4, 3, 2]
 DATE_FMT = "%a %d %b"
+
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex()
-
-def get_api():
-    """Get TM Client object"""
-    if 'api' not in g:
-        g.api = tmclilib.TMApi(os.environ['TMAPIURL'])
-    return g.api
-
 
 
 @app.get('/')
 def stage_exec():
     """Display current tasks, either exec only or all"""
-    stage = (request.args.get('stage') == 'on')
-    contexts = sorted(get_api().contexts())
+    # contexts = sorted(get_api().contexts())
     context = request.args.get('context')
     if context:
         flash(f'Context is now {context}')
@@ -31,36 +28,16 @@ def stage_exec():
     else:
         context = session.get('context')
     if not context:
-        return render_template('contexts.html', contexts=contexts)
-    assert context in contexts
-    mode = 'stage' if stage else 'execute'
-    pass_context = context if stage else None
-    tasks = get_api().all_tasks(mode=mode, context=pass_context)
-    task_extra = [task.export() for task in tasks]
-    for task in task_extra:
-        if task["due"]:
-            task["due_date"] = datetime.datetime.fromisoformat(task["due"]).strftime(DATE_FMT)
-        else:
-            task["due_date"] = None
-        task["prilet"] = tmclilib.priority_letter(task["priority"])
-    timelines = get_api().timelines_native()
-    if timelines:
-        s1_date = timelines[0].strftime(DATE_FMT)
-        if len(timelines) > 1:
-            s2_date = timelines[1].strftime(DATE_FMT)
-        else:
-            s2_date = None
-    else:
-        s1_date = None
-        s2_date = None
+        # return render_template('contexts.html', contexts=contexts)
+        context = DEFAULT_CATEGORY
+    # assert context in contexts
+    # tasks = get_api().all_tasks(mode=mode, context=pass_context)
+    tasks = [requests.get(f"{KANAPI_URL}/lists/{x}", timeout=1).json() for x in KAN_LISTS]
     return render_template('home.html',
-                           tasks=task_extra,
-                           contexts=contexts,
+                           tasks=tasks,
+                           # contexts=contexts,
                            context=context,
-                           today=datetime.date.today().strftime(DATE_FMT),
-                           s1_date=s1_date,
-                           s2_date=s2_date,
-                           stage=stage)
+                           today=datetime.date.today().strftime(DATE_FMT))
 
 @app.post('/tasks/<int:task_id>')
 def modify_task(task_id):
