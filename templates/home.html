@@ -4,6 +4,7 @@
 
 {% block content %}
 
+<!--
 <form action="{{ url_for('stage_exec') }}">
 	<p>
 		<label for="context">Context: </label>
@@ -15,6 +16,7 @@
 		<input type="submit" value="Switch" />
 	</p>
 </form>
+-->
 
 {% with messages = get_flashed_messages() %}
 {% if messages %}
@@ -26,7 +28,8 @@
 {% endif %}
 {% endwith %}
 
-<p>{{ today }}</p>
+
+<!--<p>{{ today }}</p>-->
 
 <!--
 <table class="tasks">
@@ -42,26 +45,54 @@
 <h1>{{list.list_name}}</h1>
 <ul>
 {% for card in list.cards %}
-<li>{{card.card_name}}</li>
-<!--
+<li>{{card.card_name}} {{card.category}}
+<form action="" method="POST">
 			<input type="submit" name="priup" value="&#8593;" />
 			<input type="submit" name="pridn" value="&#8595;" />
 			<input type="submit" name="complete" value="&check;" />
+</form>
+<!--
 			<input type="submit" name="unstage" value="X" />
 			<input type="submit" name="stage" value="S" />
 			<input type="submit" name="push" value="&#128197;" />
 -->
+</li>
 {% endfor %}
 </ul>
-{% endfor %}
-<!-- </table> -->
 
 <form action="{{url_for('new_task')}}" method="POST">
 	<p>
 	New task: 
 		<input name="name" />
 		<input type="submit" />
+		<input name="list_id" type="hidden" value="{{list.list_id}}" />
 	</p>
 </form>
+
+{% endfor %}
+<!-- </table> -->
+
+<h1> invox</h1>
+
+<form action="{{url_for('new_task')}}" method="POST">
+	<p>
+	New task: 
+		<input name="name" />
+		<input type="submit" />
+		<input name="list_id" type="hidden" value="{{inbox}}" />
+	</p>
+</form>
+
+<h1>Othre lists</h1>
+
+<ul>
+{% for lizt in all_lists %}
+<li><a href="{{url_for('one_list',list_id=lizt.list_id)}}">{{lizt.list_name}}</a></li>
+{% endfor %}
+</ul>
+
+<!--     print(item['list_id'], item['list_name'], item['list_wakeup']) -->
+
+
 
 {% endblock %}

@@ -9,7 +9,7 @@ import requests
 
 KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
 DEFAULT_CATEGORY = 1
-KAN_LISTS = [6, 5, 4, 3, 2]
+KAN_LISTS = [3, 4, 5]
 DATE_FMT = "%a %d %b"
 
 
@@ -31,13 +31,15 @@ def stage_exec():
         # return render_template('contexts.html', contexts=contexts)
         context = DEFAULT_CATEGORY
     # assert context in contexts
-    # tasks = get_api().all_tasks(mode=mode, context=pass_context)
+    
+    all_lists = requests.get(f"{KANAPI_URL}lists/", timeout=1).json()
     tasks = [requests.get(f"{KANAPI_URL}/lists/{x}", timeout=1).json() for x in KAN_LISTS]
     return render_template('home.html',
                            tasks=tasks,
                            # contexts=contexts,
                            context=context,
-                           today=datetime.date.today().strftime(DATE_FMT))
+                           today=datetime.date.today().strftime(DATE_FMT),
+                           all_lists=all_lists)
 
 @app.post('/tasks/<int:task_id>')
 def modify_task(task_id):
@@ -96,3 +98,10 @@ def new_task():
                                'wakeup': datetime.date.today().isoformat()})
     flash(f"Created task {task.tid}: {name}")
     return redirect(url_for('stage_exec', stage="on"))
+
+@app.get('/lists/<list_id>')
+def one_list(list_id):
+    tasks = requests.get(f"{KANAPI_URL}/lists/{list_id}", timeout=1).json()
+    return render_template('list.html',
+                           tasks=tasks)
+
