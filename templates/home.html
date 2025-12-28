@@ -4,20 +4,6 @@
 
 {% block content %}
 
-<!--
-<form action="{{ url_for('stage_exec') }}">
-	<p>
-		<label for="context">Context: </label>
-		<select name="context" id="context">
-			{% for contextsel in contexts %}
-			<option{% if contextsel == context %} selected="selected"{% endif %}>{{ contextsel }}</option>
-			{% endfor %}
-		</select>
-		<input type="submit" value="Switch" />
-	</p>
-</form>
--->
-
 {% with messages = get_flashed_messages() %}
 {% if messages %}
 <ul>
@@ -45,7 +31,7 @@
 <h1>{{list.list_name}}</h1>
 <ul>
 {% for card in list.cards %}
-<li>{{card.card_name}} {{card.category}}
+<li>{{card.card_name}} {{card.category_id}}
 <form action="" method="POST">
 			<input type="submit" name="priup" value="&#8593;" />
 			<input type="submit" name="pridn" value="&#8595;" />
@@ -64,6 +50,11 @@
 	<p>
 	New task: 
 		<input name="name" />
+		<select name="context" id="context">
+			{% for contextsel in contexts %}
+			<option value="{{contextsel.category_id}}">{{contextsel.category_name}}</option>
+			{% endfor %}
+		</select>
 		<input type="submit" />
 		<input name="list_id" type="hidden" value="{{list.list_id}}" />
 	</p>
@@ -78,6 +69,11 @@
 	<p>
 	New task: 
 		<input name="name" />
+		<select name="context" id="context">
+			{% for contextsel in contexts %}
+			<option value="{{contextsel.category_id}}">{{contextsel.category_name}}</option>
+			{% endfor %}
+		</select>
 		<input type="submit" />
 		<input name="list_id" type="hidden" value="{{inbox}}" />
 	</p>

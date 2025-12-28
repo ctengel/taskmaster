@@ -21,7 +21,7 @@
 <h1>{{tasks.list_name}}</h1>
 <ul>
 {% for card in tasks.cards %}
-<li>{{card.card_name}} {{card.category}}
+<li>{{card.card_name}} {{card.category_id}}
 <form action="" method="POST">
 			<input type="submit" name="complete" value="&check;" />
 </form>
@@ -33,6 +33,11 @@
 	<p>
 	New task: 
 		<input name="name" />
+		<select name="context" id="context">
+			{% for contextsel in contexts %}
+			<option value="{{contextsel.category_id}}">{{contextsel.category_name}}</option>
+			{% endfor %}
+		</select>
 		<input type="submit" />
 		<input name="list_id" type="hidden" value="{{tasks.list_id}}" />
 	</p>

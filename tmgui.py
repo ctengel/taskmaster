@@ -17,10 +17,18 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex()
 
 
+def get_cats():
+    """Return all categories with their IDs"""
+    result = requests.get(f"{KANAPI_URL}categories/",
+                           timeout=1)
+    result.raise_for_status()
+    return result.json()
+
+
 @app.get('/')
 def stage_exec():
     """Display current tasks, either exec only or all"""
-    # contexts = sorted(get_api().contexts())
+    contexts = get_cats()
     context = request.args.get('context')
     if context:
         flash(f'Context is now {context}')
@@ -30,13 +38,12 @@ def stage_exec():
     if not context:
         # return render_template('contexts.html', contexts=contexts)
         context = DEFAULT_CATEGORY
-    # assert context in contexts
-    
+    assert context in [c['category_id'] for c in contexts]
     all_lists = requests.get(f"{KANAPI_URL}lists/", timeout=1).json()
     tasks = [requests.get(f"{KANAPI_URL}/lists/{x}", timeout=1).json() for x in KAN_LISTS]
     return render_template('home.html',
                            tasks=tasks,
-                           # contexts=contexts,
+                           contexts=contexts,
                            context=context,
                            today=datetime.date.today().strftime(DATE_FMT),
                            all_lists=all_lists)
@@ -102,6 +109,8 @@ def new_task():
 @app.get('/lists/<list_id>')
 def one_list(list_id):
     tasks = requests.get(f"{KANAPI_URL}/lists/{list_id}", timeout=1).json()
+    contexts = get_cats()
     return render_template('list.html',
-                           tasks=tasks)
+                           tasks=tasks,
+                           contexts=contexts)
 
