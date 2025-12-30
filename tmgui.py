@@ -11,6 +11,7 @@ KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
 DEFAULT_CATEGORY = 1
 KAN_LISTS = [3, 4, 5]
 DATE_FMT = "%a %d %b"
+INBOX_LIST_ID = 1
 
 
 app = Flask(__name__)
@@ -46,65 +47,52 @@ def stage_exec():
                            contexts=contexts,
                            context=context,
                            today=datetime.date.today().strftime(DATE_FMT),
-                           all_lists=all_lists)
+                           all_lists=all_lists,
+                           inbox=INBOX_LIST_ID)
 
 @app.post('/tasks/<int:task_id>')
 def modify_task(task_id):
     """Chage a given task"""
-    task = get_api().one_task(task_id)
+    # task = get_api().one_task(task_id)
     if request.form.get("complete"):
-        task.close()
-        flash(f"Completed task {task_id}: {task.export()['name']}")
-    if request.form.get("unstage"):
-        task.warm(un=True)
-        flash(f"Unstaged task {task_id}: {task.export()['name']}")
-    if request.form.get("stage"):
-        task.warm()
-        flash(f"Staged task {task_id}: {task.export()['name']}")
-    if request.form.get("push"):
-        current_timeline = task.getsched()
-        timelines = get_api().timelines_native()
-        assert current_timeline
-        assert timelines
-        s1_date_raw = timelines[0]
-        assert s1_date_raw > current_timeline
-        s1_date = s1_date_raw.strftime(DATE_FMT)
-        if len(timelines) > 1:
-            s2_date = timelines[1].strftime(DATE_FMT)
-        else:
-            s2_date = None
-        task.schedule(s1_date_raw)
-        flash(f"Pushed task {task_id}: {task.export()['name']} to {s1_date}-{s2_date}")
+        res = requests.post(f"{KANAPI_URL}cards/{task_id}/close",
+                            json={},
+                            timeout=3)
+        res.raise_for_status()
+        flash(f"Completed task {task_id}")
     if request.form.get("priup") or request.form.get("pridn"):
-        relative = -1
+        relative = 1
         if request.form.get("priup"):
-            relative = 1
-        _, old_letter, old_priority = task.prioritize()
-        direction, new_letter, new_priority = task.prioritize(relative)
-        message = "Same"
-        if direction > 1:
-            message = "Raised"
-        elif direction < 1:
-            message = "Lowered"
-        flash(f"{message} priority {task_id}: {task.export()['name']} "
-              f"from {old_letter}/{old_priority} to {new_letter}/{new_priority}")
-    view_stage = None
-    if request.form.get("mode") == "True":
-        view_stage = "on"
-    return redirect(url_for('stage_exec', stage=view_stage))
+            relative = -1
+        orig_task = requests.get(f"{KANAPI_URL}cards/{task_id}").json()
+        old_list_id = orig_task['list_id']
+        assert old_list_id in KAN_LISTS
+        old_idx = KAN_LISTS.index(old_list_id)
+        new_idx = old_idx + relative
+        assert new_idx >= 0
+        assert new_idx <= len(KAN_LISTS)
+        new_list_id = KAN_LISTS[new_idx]
+        result = requests.post(f"{KANAPI_URL}cards/{task_id}/move",
+                                json={'list_id': new_list_id},
+                                timeout=3)
+        flash(f"{task_id}: moved to list {new_list_id}")
+    return redirect(url_for('stage_exec'))
 
 @app.post('/tasks/')
 def new_task():
     """Create a new task in this context active immediately"""
-    context = session.get('context')
-    assert context
+    # context = session.get('context')
+    context = int(request.form.get('context'))
     name = request.form.get('name')
     assert name
-    task = get_api().new_task({'context': context,
-                               'name': name,
-                               'wakeup': datetime.date.today().isoformat()})
-    flash(f"Created task {task.tid}: {name}")
-    return redirect(url_for('stage_exec', stage="on"))
+    list_id = int(request.form.get('list_id'))
+    result = requests.post(f"{KANAPI_URL}lists/{list_id}/cards/",
+                        json={'card_name': name,
+                              'category_id': context},
+                        timeout=2)
+    result.raise_for_status()
+    flash(f"Created task {result.json()['card_id']}: {name}")
+    return redirect(url_for('stage_exec'))
 
 @app.get('/lists/<list_id>')
 def one_list(list_id):
