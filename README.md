@@ -21,6 +21,7 @@ Run it
 - `fastapi dev --port 29325 kanapi.py`
 - `KANAPI_URL=http://127.0.0.1:29325/ ./kantui.py`
 - `KANAPI_URL=http://127.0.0.1:29325/ ./kancli.py --help`
+- `KANAPI_URL=http://127.0.0.1:29325/ flask --app tmgui run --port 29319`
 
 ### Recommended setup
 
@@ -73,7 +74,6 @@ From there you can now add any existing data you want to keep.  If you have an e
 Roadmap
 -------
 
-- WebGUI
 - packaging
 - server side board definition
 

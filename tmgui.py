@@ -3,7 +3,7 @@
 import secrets
 import datetime
 import os
-from flask import Flask, g, flash, session, request, render_template, redirect, url_for
+from flask import Flask, flash, session, request, render_template, redirect, url_for
 import requests
 
 
@@ -64,7 +64,7 @@ def modify_task(task_id):
         relative = 1
         if request.form.get("priup"):
             relative = -1
-        orig_task = requests.get(f"{KANAPI_URL}cards/{task_id}").json()
+        orig_task = requests.get(f"{KANAPI_URL}cards/{task_id}", timeout=1).json()
         old_list_id = orig_task['list_id']
         assert old_list_id in KAN_LISTS
         old_idx = KAN_LISTS.index(old_list_id)
@@ -75,6 +75,7 @@ def modify_task(task_id):
         result = requests.post(f"{KANAPI_URL}cards/{task_id}/move",
                                 json={'list_id': new_list_id},
                                 timeout=3)
+        result.raise_for_status()
         flash(f"{task_id}: moved to list {new_list_id}")
     return redirect(url_for('stage_exec'))
 
@@ -96,9 +97,9 @@ def new_task():
 
 @app.get('/lists/<list_id>')
 def one_list(list_id):
+    """return one list"""
     tasks = requests.get(f"{KANAPI_URL}/lists/{list_id}", timeout=1).json()
     contexts = get_cats()
     return render_template('list.html',
                            tasks=tasks,
                            contexts=contexts)
-
