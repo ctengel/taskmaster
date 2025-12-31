@@ -8,6 +8,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Button, Input, Label
 from textual.containers import HorizontalScroll, VerticalScroll
 from textual.screen import ModalScreen
+from textual.css.query import NoMatches
 import requests
 
 KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
@@ -75,7 +76,9 @@ class KanList(VerticalScroll):
                                json={'card_name': card_name,
                                      'category_id': category_id},
                                timeout=2)
-        self.mount(KanCard(card_json=result.json()))
+        new_card = KanCard(card_json=result.json())
+        self.mount(new_card)
+        new_card.focus()
 
     def child_cards(self):
         """Return child cards (omit label)"""
@@ -233,7 +236,9 @@ class KanBanApp(App):
                 return
         if self.selected_move_card:
             # Moving a card
-            assert curr_card.card_id == self.selected_move_card.card_id
+            if curr_card.card_id != self.selected_move_card.card_id:
+                # this means we may be moving to fast, better to wait
+                return
             curr_card.manipalated = True
             if list_:
                 # Move to a new list by removing and recreating
@@ -252,10 +257,16 @@ class KanBanApp(App):
                     curr_list.move_child(curr_card, after = curr_pos + 1)
                 else:
                     curr_list.move_child(curr_card, before = curr_pos - 1)
+                curr_card.blur()
+                curr_card.focus()
         else:
             # Just scrolling
             if list_:
-                tgt_list.query(KanCard).first().focus()
+                try:
+                    tgt_list.query(KanCard).first().focus()
+                except NoMatches:
+                    # TODO go to next list instead
+                    return
             else:
                 curr_list.child_cards()[curr_pos + 1 if increase else curr_pos - 1].focus()
 
