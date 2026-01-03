@@ -13,6 +13,9 @@ import requests
 
 KANAPI_URL = os.environ.get('KANAPI_URL', 'http://127.0.0.1:29325/')
 DEFAULT_CATEGORY = 1
+VARIANT_MAP = {1: 'success',
+               2: 'default',
+               3: 'warning'}
 
 class CardEdit(ModalScreen[str]):
     """Ask user for text of card"""
@@ -36,11 +39,16 @@ class KanCard(Button):
     constructor takes card_json from API Card model
     """
 
+    def set_color(self):
+        """Set card color based on category"""
+        self.variant = VARIANT_MAP.get(self.card_json.get('category_id'), 'default')
+
     def __init__(self, *args: Any, card_json: str, **kwargs: Any):
         self.card_json = card_json
         self.card_id = card_json['card_id']
         self.manipalated = False
         super().__init__(card_json['card_name'], *args, **kwargs)
+        self.set_color()
 
     def update_card(self, new_text):
         """Update card text both on screen and in API"""
@@ -193,7 +201,7 @@ class KanBanApp(App):
                                        timeout=3)
                 self.selected_move_card.card_json = result.json()
                 self.selected_move_card.manipalated = False
-            self.selected_move_card.variant = 'default'
+            self.selected_move_card.set_color()
             self.selected_move_card = None
         else:
             tgt_card = self.current_card()
