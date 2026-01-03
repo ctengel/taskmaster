@@ -218,6 +218,7 @@ def move_card(*, session: Session = Depends(get_session), card_id: int, card_mov
     else:
         assert not (card_move.before_card and card_move.after_card)
         if card_move.list_id:
+            card.list_order = None
             # NOTE this may be inefficient
             session.commit()
             session.refresh(card)
