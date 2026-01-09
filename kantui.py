@@ -73,7 +73,7 @@ class KanList(VerticalScroll):
     def compose(self) -> ComposeResult:
         result = requests.get(self.kba_url, timeout=1).json()
         self.list_id = result['list_id']
-        cards = result['cards']
+        cards = [x for x in result['cards'] if ((not self.app.kan_exclusive) or (x['category_id'] == self.app.kan_category_id))]
         yield Label(result['list_name'])
         for card in cards:
             yield KanCard(card_json=card)
@@ -119,10 +119,12 @@ class KanBanApp(App):
     selected_move_card = None
     kan_list_ids = []
     kan_category_id = None
+    kan_exclusive = False
 
-    def __init__(self, *args: Any, lists: list[int] = None, category: int = None, **kwargs: Any):
+    def __init__(self, *args: Any, lists: list[int] = None, category: int = None, exclusive: bool = False, **kwargs: Any):
         self.kan_list_ids = lists
         self.kan_category_id = category
+        self.kan_exclusive = exclusive
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
@@ -310,8 +312,10 @@ class KanBanApp(App):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--category")
+    parser.add_argument('-x', '--exclusive', action='store_true')
     parser.add_argument("lists", nargs="+")
     cargs = parser.parse_args()
     app = KanBanApp(lists=[int(x) for x in cargs.lists],
-                    category=(int(cargs.category) if cargs.category else None))
+                    category=(int(cargs.category) if cargs.category else None),
+                    exclusive=cargs.exclusive)
     app.run()
