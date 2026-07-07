@@ -1,0 +1,543 @@
+/* TaskMaster Desk — papers on a desk.
+   Palette: blotter-green desk, warm ruled paper, brass accents, warm-black tray. */
+
+:root {
+    --desk: #3A5244;
+    --desk-edge: #2C4034;
+    --paper: #FBF7EB;
+    --paper-edge: #E6DEC6;
+    --rule: rgba(96, 138, 184, 0.30);
+    --rule-height: 28px;
+    --ink: #2B2620;
+    --ink-soft: #7A7060;
+    --brass: #B98A2F;
+    --chrome: #23201A;
+    --chrome-ink: #E9E1CF;
+    --focus: #2F6FD6;
+    --cat-color: #9A938A;
+    --serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --sans: system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font-family: var(--sans);
+    color: var(--ink);
+    background:
+        radial-gradient(ellipse at 50% -20%, var(--desk) 60%, var(--desk-edge) 100%);
+}
+
+kbd {
+    font-family: var(--mono);
+    font-size: 0.72em;
+    padding: 1px 4px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    opacity: 0.65;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+}
+
+/* ---------- toolbar tray ---------- */
+
+#toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.9rem;
+    background: var(--chrome);
+    color: var(--chrome-ink);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    flex-wrap: wrap;
+}
+
+#brand {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    margin-right: 0.4rem;
+    white-space: nowrap;
+}
+
+#brand em {
+    color: var(--brass);
+    font-style: italic;
+}
+
+#toolbar .spacer { flex: 1; }
+
+#toolbar button {
+    font: 600 0.72rem var(--sans);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--chrome-ink);
+    background: transparent;
+    border: 1px solid rgba(233, 225, 207, 0.35);
+    border-radius: 4px;
+    padding: 0.3rem 0.55rem;
+    cursor: pointer;
+}
+
+#toolbar button:hover {
+    border-color: var(--brass);
+    color: #fff;
+}
+
+#upsert-box {
+    display: flex;
+    align-items: stretch;
+}
+
+#upsert-input {
+    font: 0.85rem var(--mono);
+    width: 16rem;
+    max-width: 40vw;
+    padding: 0.28rem 0.5rem;
+    color: var(--chrome-ink);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(233, 225, 207, 0.35);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+}
+
+#upsert-input::placeholder { color: rgba(233, 225, 207, 0.5); }
+
+#upsert-box button { border-radius: 0 4px 4px 0; }
+
+/* ---------- upsert results ---------- */
+
+#upsert-results {
+    position: absolute;
+    z-index: 40;
+    top: 2.6rem;
+    left: 8.5rem;
+    max-width: 26rem;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    background: var(--paper);
+    border: 1px solid var(--paper-edge);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+}
+
+#upsert-results li {
+    padding: 0.3rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+}
+
+#upsert-results li.selected { background: rgba(185, 138, 47, 0.25); }
+
+#upsert-results li .where {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+#upsert-results li.create { font-style: italic; color: var(--ink-soft); }
+
+/* ---------- desk row ---------- */
+
+#desk {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.6rem;
+    padding: 1.6rem 1.8rem 2.2rem;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* ---------- papers ---------- */
+
+.paper {
+    flex: 0 0 260px;
+    width: 260px;
+    min-height: calc(var(--rule-height) * 8);
+    background: var(--paper);
+    border: 1px solid var(--paper-edge);
+    border-radius: 1px;
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.25),
+        0 8px 18px rgba(0, 0, 0, 0.30);
+    transform: rotate(var(--tilt, 0deg));
+    display: flex;
+    flex-direction: column;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.paper.drag {
+    transform: rotate(0deg) scale(1.03);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.5);
+    opacity: 0.92;
+    z-index: 10;
+    cursor: grabbing;
+}
+
+.paper.woken {
+    box-shadow:
+        0 0 0 3px var(--brass),
+        0 8px 18px rgba(0, 0, 0, 0.30);
+}
+
+.paper header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.55rem 0.6rem 0.15rem;
+    border-bottom: 2px solid var(--ink);
+    cursor: grab;
+    touch-action: none; /* let pointer-event drags work on touch */
+}
+
+.paper header h2 {
+    flex: 1;
+    margin: 0;
+    font: 600 1.02rem var(--serif);
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
+}
+
+.paper header .tools {
+    display: flex;
+    gap: 0.15rem;
+    align-items: center;
+    opacity: 0.35;
+    transition: opacity 100ms;
+}
+
+.paper:hover header .tools,
+.paper:focus-within header .tools { opacity: 1; }
+
+.paper header .tools button,
+.card button {
+    font-size: 0.8rem;
+    line-height: 1;
+    background: none;
+    border: none;
+    padding: 2px 3px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    border-radius: 3px;
+}
+
+.paper header .tools button:hover,
+.card button:hover { color: var(--ink); background: rgba(0, 0, 0, 0.07); }
+
+.paper header .tools input[type="checkbox"] {
+    accent-color: var(--brass);
+    margin: 0 1px;
+}
+
+.paper .cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---------- cards: typed lines on ruled paper ---------- */
+
+.card {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    min-height: var(--rule-height);
+    padding: 5px 0.35rem 0 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    border-left: 4px solid var(--cat-color);
+    font: 0.82rem/1.25 var(--mono);
+    cursor: default;
+    touch-action: none; /* let pointer-event drags work on touch */
+}
+
+.card .name {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.card .due {
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+.card:focus-visible {
+    outline: none;
+    background: rgba(47, 111, 214, 0.10);
+    border-left-width: 8px;
+}
+
+.card.picked {
+    background: rgba(185, 138, 47, 0.22);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+.card.drop-slot {
+    background: rgba(47, 111, 214, 0.12);
+    border: 1px dashed var(--focus);
+    border-left: 4px dashed var(--focus);
+}
+
+.card.drop-slot > * { visibility: hidden; }
+
+.card.match { background: rgba(185, 138, 47, 0.28); }
+
+.dimmed { opacity: 0.35; }
+
+#drag-clone {
+    position: fixed;
+    z-index: 100;
+    pointer-events: none;
+    width: 240px;
+    background: var(--paper);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+    transform: rotate(-1.5deg);
+    list-style: none;
+}
+
+/* blank ruled lines at the bottom of each sheet = add-a-task zone */
+
+.paper .blank-lines {
+    flex: 1;
+    min-height: calc(var(--rule-height) * 3);
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--rule-height) - 1px),
+        var(--rule) calc(var(--rule-height) - 1px),
+        var(--rule) var(--rule-height));
+    cursor: text;
+    border-radius: 0 0 1px 1px;
+}
+
+.paper .blank-lines:hover { background-color: rgba(0, 0, 0, 0.02); }
+
+/* inline editing */
+
+.inline-form {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    padding: 2px 0.35rem;
+}
+
+.inline-form input[type="text"] {
+    flex: 1;
+    min-width: 3rem;
+    font: 0.82rem var(--mono);
+    padding: 2px 4px;
+    border: 1px solid var(--brass);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--ink);
+}
+
+.inline-form input[type="date"],
+.inline-form select {
+    font: 0.7rem var(--sans);
+    max-width: 7.5rem;
+    border: 1px solid var(--paper-edge);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--ink);
+}
+
+.paper header .inline-form input[type="text"] { font-family: var(--serif); }
+
+/* ---------- drawer ---------- */
+
+#drawer {
+    background: linear-gradient(#4E3A26, #3E2E1E);
+    color: #EFE6D2;
+    padding: 0.6rem 1.2rem 1rem;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.5);
+    border-top: 3px solid #63492F;
+}
+
+#drawer h2 {
+    margin: 0 0 0.5rem;
+    font: 600 0.75rem var(--sans);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--brass);
+}
+
+/* drawer handle */
+#drawer h2::before {
+    content: '';
+    display: block;
+    width: 4rem;
+    height: 5px;
+    margin: 0 auto 0.5rem;
+    border-radius: 3px;
+    background: var(--brass);
+    opacity: 0.8;
+}
+
+#drawer-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#drawer-tabs li {
+    background: var(--paper);
+    color: var(--ink);
+    font: 0.8rem var(--serif);
+    padding: 0.35rem 0.7rem 0.25rem;
+    border-radius: 1px 6px 1px 1px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transform: rotate(-0.5deg);
+}
+
+#drawer-tabs li:nth-child(even) { transform: rotate(0.6deg); }
+
+#drawer-tabs li:hover { transform: translateY(-3px); }
+
+#drawer-tabs li .wake {
+    display: block;
+    font: 0.65rem var(--sans);
+    color: var(--ink-soft);
+}
+
+#drawer-empty { font-size: 0.8rem; opacity: 0.7; }
+
+/* ---------- help footer ---------- */
+
+#help {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.3rem 1rem;
+    font-size: 0.68rem;
+    color: rgba(233, 225, 207, 0.75);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+#help span { white-space: nowrap; }
+
+/* ---------- put-away dialog ---------- */
+
+#away-dialog {
+    border: 1px solid var(--paper-edge);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    font-family: var(--sans);
+}
+
+#away-dialog::backdrop { background: rgba(20, 30, 24, 0.55); }
+
+#away-dialog h3 { margin-top: 0; font-family: var(--serif); }
+
+#away-dialog label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+    color: var(--ink-soft);
+}
+
+#away-dialog menu {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 1rem 0 0;
+}
+
+#away-dialog button {
+    font: 600 0.75rem var(--sans);
+    padding: 0.35rem 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--paper-edge);
+    background: #fff;
+    cursor: pointer;
+}
+
+#away-dialog #away-ok {
+    background: var(--brass);
+    border-color: var(--brass);
+    color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+}
+
+/* ---------- print: selected papers as clean sheets ---------- */
+
+@media print {
+    body { background: #fff; display: block; }
+
+    #toolbar, #drawer, #help, #upsert-results,
+    .paper .tools, .card button, .blank-lines { display: none !important; }
+
+    #desk {
+        display: block;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .paper {
+        display: none;
+        width: 100%;
+        min-height: 0;
+        border: none;
+        box-shadow: none;
+        transform: none;
+        break-inside: avoid;
+        margin-bottom: 1.5rem;
+    }
+
+    body.print-all .paper,
+    .paper.print-selected { display: block; }
+
+    .paper header {
+        cursor: default;
+        border-bottom: 2px solid #000;
+        padding-left: 0;
+    }
+
+    .card {
+        border-left: none;
+        border-bottom: 1px solid #ccc;
+        color: #000;
+        padding-left: 0;
+    }
+
+    .card .name::before { content: '\2610\00a0\00a0'; }
+
+    .card .cat {
+        font-size: 0.65rem;
+        color: #555;
+        white-space: nowrap;
+    }
+}
+
+@media not print {
+    .card .cat { display: none; }
+}
