@@ -116,6 +116,24 @@ kbd {
 
 #upsert-box button { border-radius: 0 4px 4px 0; }
 
+#category-filter {
+    font: 600 0.72rem var(--sans);
+    letter-spacing: 0.06em;
+    color: var(--chrome-ink);
+    background: var(--chrome);
+    border: 1px solid rgba(233, 225, 207, 0.35);
+    border-radius: 4px;
+    padding: 0.3rem 0.4rem;
+    cursor: pointer;
+}
+
+#category-filter:hover { border-color: var(--brass); color: #fff; }
+
+#category-filter.filtering {
+    border-color: var(--brass);
+    color: #fff;
+}
+
 /* ---------- upsert results ---------- */
 
 #upsert-results {

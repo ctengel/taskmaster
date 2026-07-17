@@ -20,6 +20,7 @@ const state = {
     picked: null,              // card_id picked up for keyboard moves
     printSelection: new Set(), // list_ids marked for printing
     lastCategory: DEFAULT_CATEGORY,
+    filterCategory: null,      // only show this category_id; null = all (ephemeral)
     drawerOpen: false,
 };
 
@@ -32,6 +33,7 @@ const drawerEmptyEl = document.getElementById('drawer-empty');
 const upsertInput = document.getElementById('upsert-input');
 const upsertScopeBtn = document.getElementById('upsert-scope');
 const upsertResultsEl = document.getElementById('upsert-results');
+const catFilterEl = document.getElementById('category-filter');
 const awayDialog = document.getElementById('away-dialog');
 const awayNameEl = document.getElementById('away-name');
 const awayDateEl = document.getElementById('away-date');
@@ -61,6 +63,12 @@ function deskPapers() {
         (a, b) => paperSortKey(a) - paperSortKey(b) || a.list_id - b.list_id);
 }
 
+function visibleCards(list) {
+    return state.filterCategory === null
+        ? list.cards
+        : list.cards.filter((c) => c.category_id === state.filterCategory);
+}
+
 function currentPaper() {
     return state.papers.get(state.focus.listId) || deskPapers()[0] || null;
 }
@@ -85,6 +93,7 @@ async function reload() {
     const [cats, onDesk, away] = await Promise.all(
         [api.getCategories(), api.getLists(false), api.getLists(true)]);
     state.categories = new Map(cats.map((c) => [c.category_id, c]));
+    renderFilterOptions();
     const full = await Promise.all(onDesk.map((l) => api.getList(l.list_id)));
     state.papers = new Map(full.map((l) => [l.list_id, l]));
     state.drawer = away;
@@ -220,7 +229,7 @@ function paperEl(list, q) {
     const ul = document.createElement('ul');
     ul.className = 'cards';
     let anyMatch = false;
-    for (const card of list.cards) {
+    for (const card of visibleCards(list)) {
         const li = cardEl(card, list, q);
         if (q && li.classList.contains('match')) anyMatch = true;
         ul.append(li);
@@ -394,7 +403,7 @@ function newCard(list) {
     const li = document.createElement('li');
     li.append(inlineForm({
         withCategory: true,
-        categoryId: state.lastCategory,
+        categoryId: state.filterCategory ?? state.lastCategory,
         onCommit: (v) => guard(async () => {
             state.lastCategory = v.categoryId;
             const created = await api.createCard(list.list_id,
@@ -623,7 +632,7 @@ function navigate(key) {
     const papers = deskPapers();
     if (!papers.length) return;
     const list = currentPaper();
-    const cards = list.cards;
+    const cards = visibleCards(list);
     const idx = cards.findIndex((c) => c.card_id === state.focus.cardId);
     if (key === 's') {
         if (idx < cards.length - 1) {
@@ -639,9 +648,10 @@ function navigate(key) {
         const pi = papers.indexOf(list);
         const target = papers[pi + (key === 'd' ? 1 : -1)];
         if (!target) return;
+        const targetCards = visibleCards(target);
         state.focus = {
             listId: target.list_id,
-            cardId: target.cards.length ? target.cards[0].card_id : null,
+            cardId: targetCards.length ? targetCards[0].card_id : null,
         };
     }
     restoreFocus();
@@ -650,7 +660,7 @@ function navigate(key) {
 function movePicked(key) {
     const list = state.papers.get(state.focus.listId);
     if (!list) return;
-    const cards = list.cards;
+    const cards = visibleCards(list);
     const idx = cards.findIndex((c) => c.card_id === state.picked);
     if (idx < 0) return;
     let payload = null;
@@ -692,6 +702,52 @@ function toggleDrawer() {
     renderDrawer();
 }
 
+/* ---------- category filter (ephemeral; null = show all) ---------- */
+
+function renderFilterOptions() {
+    if (state.filterCategory !== null && !state.categories.has(state.filterCategory)) {
+        state.filterCategory = null;
+    }
+    catFilterEl.textContent = '';
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All categories';
+    catFilterEl.append(all);
+    for (const cat of state.categories.values()) {
+        const opt = document.createElement('option');
+        opt.value = cat.category_id;
+        opt.textContent = cat.category_name;
+        catFilterEl.append(opt);
+    }
+    catFilterEl.value = state.filterCategory === null ? '' : String(state.filterCategory);
+    catFilterEl.classList.toggle('filtering', state.filterCategory !== null);
+}
+
+function cardHidden(cardId) {
+    if (cardId === null || state.filterCategory === null) return false;
+    for (const l of state.papers.values()) {
+        const c = l.cards.find((x) => x.card_id === cardId);
+        if (c) return c.category_id !== state.filterCategory;
+    }
+    return false;
+}
+
+function setFilter(catId) {
+    state.filterCategory = catId;
+    catFilterEl.value = catId === null ? '' : String(catId);
+    catFilterEl.classList.toggle('filtering', catId !== null);
+    if (cardHidden(state.focus.cardId)) state.focus.cardId = null;
+    if (cardHidden(state.picked)) state.picked = null;
+    render();
+}
+
+function cycleFilter() {
+    const ids = [...state.categories.keys()];
+    if (!ids.length) return;
+    const i = ids.indexOf(state.filterCategory); // -1 when showing all
+    setFilter(i === ids.length - 1 ? null : ids[i + 1]);
+}
+
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
     if (e.target.closest('input, textarea, select')) return;
@@ -714,6 +770,7 @@ document.addEventListener('keydown', (e) => {
         case 'r': if (list) renamePaper(list); break;
         case 'z': if (list) putAwayDialog(list); break;
         case 'b': toggleDrawer(); break;
+        case 'f': cycleFilter(); break;
         case '/': case 'u': upsertInput.focus(); upsertInput.select(); break;
         case 'p': if (list) togglePrintSelection(list); break;
         case 'P': window.print(); break;
@@ -721,6 +778,7 @@ document.addEventListener('keydown', (e) => {
         case 'Escape':
             if (state.picked !== null) { state.picked = null; render(); }
             else if (upsert.query) clearUpsert();
+            else if (state.filterCategory !== null) setFilter(null);
             else if (state.drawerOpen) toggleDrawer();
             break;
         default: return;
@@ -748,13 +806,13 @@ function upsertMatches() {
     const out = [];
     if (!q) return out;
     for (const l of deskPapers()) {
-        for (const c of l.cards) {
+        for (const c of visibleCards(l)) {
             if (c.card_name.toLowerCase().includes(q)) out.push({ card: c, list: l, away: false });
         }
     }
     if (upsert.scope === 'all') {
         for (const l of state.drawerCards.values()) {
-            for (const c of l.cards) {
+            for (const c of visibleCards(l)) {
                 if (c.card_name.toLowerCase().includes(q)) out.push({ card: c, list: l, away: true });
             }
         }
@@ -818,7 +876,7 @@ function createFromUpsert() {
     if (!target || !cardName) return;
     guard(async () => {
         const created = await api.createCard(target.list_id,
-            { card_name: cardName, category_id: state.lastCategory });
+            { card_name: cardName, category_id: state.filterCategory ?? state.lastCategory });
         state.focus = { listId: target.list_id, cardId: created.card_id };
         await refreshPapers([target.list_id]);
         clearUpsert();
@@ -902,6 +960,8 @@ document.getElementById('new-paper-btn').addEventListener('click', newPaper);
 document.getElementById('drawer-btn').addEventListener('click', toggleDrawer);
 document.getElementById('print-btn').addEventListener('click', () => window.print());
 document.getElementById('refresh-btn').addEventListener('click', () => guard(reload));
+catFilterEl.addEventListener('change', () =>
+    setFilter(catFilterEl.value ? Number(catFilterEl.value) : null));
 
 window.addEventListener('focus', () => {
     if (Date.now() - lastLoad > 5000 && !document.querySelector('.inline-form')) {
