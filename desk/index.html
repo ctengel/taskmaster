@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskMaster Desk</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128221;</text></svg>">
+<link rel="stylesheet" href="desk.css">
+</head>
+<body>
+<header id="toolbar">
+  <span id="brand">TaskMaster <em>desk</em></span>
+  <span id="upsert-box">
+    <input id="upsert-input" type="search" placeholder="Find or add a task (/)" autocomplete="off">
+    <button id="upsert-scope" title="Toggle search scope">visible</button>
+    <ul id="upsert-results" hidden></ul>
+  </span>
+  <select id="category-filter" title="Filter by category (f cycles)">
+    <option value="">All categories</option>
+  </select>
+  <span class="spacer"></span>
+  <button id="new-paper-btn">New paper <kbd>N</kbd></button>
+  <button id="drawer-btn">Drawer <kbd>b</kbd></button>
+  <button id="print-btn">Print <kbd>P</kbd></button>
+  <button id="refresh-btn" title="Refresh from server">&#10227; <kbd>g</kbd></button>
+</header>
+<main id="desk"></main>
+<aside id="drawer" hidden>
+  <h2>Drawer</h2>
+  <ul id="drawer-tabs"></ul>
+  <p id="drawer-empty" hidden>Nothing put away.</p>
+</aside>
+<footer id="help">
+  <span><kbd>w</kbd><kbd>s</kbd> card</span>
+  <span><kbd>a</kbd><kbd>d</kbd> paper</span>
+  <span><kbd>m</kbd> pick up / drop</span>
+  <span><kbd>n</kbd> new task</span>
+  <span><kbd>e</kbd> edit</span>
+  <span><kbd>c</kbd> done</span>
+  <span><kbd>N</kbd> new paper</span>
+  <span><kbd>A</kbd><kbd>D</kbd> move paper</span>
+  <span><kbd>r</kbd> rename</span>
+  <span><kbd>z</kbd> put away</span>
+  <span><kbd>p</kbd> mark for print</span>
+  <span><kbd>f</kbd> filter category</span>
+</footer>
+<dialog id="away-dialog">
+  <form method="dialog">
+    <h3>Put away &ldquo;<span id="away-name"></span>&rdquo;</h3>
+    <label for="away-date">Wake up on (optional)</label>
+    <input type="date" id="away-date">
+    <menu>
+      <button value="cancel" type="submit">Cancel</button>
+      <button value="ok" type="submit" id="away-ok">Put away</button>
+    </menu>
+  </form>
+</dialog>
+<script type="module" src="app.js"></script>
+</body>
+</html>

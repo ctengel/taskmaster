@@ -7,6 +7,7 @@ Master your tasks - KanBan-style RESTful API for managing tasks as cards
 - Data model with Boards, Lists, Cards, and Categories
 - API with some CRUD endpoints but some obvious missing
 - TUI to show board of lists
+- Web GUI showing lists as "papers on a desk"
 
 Currently an alpha quality software, missing key features, see #93.
 
@@ -19,9 +20,35 @@ Run it
 
 - `git clone https://github.com/ctengel/taskmaster.git`
 - `fastapi dev --port 29325 kanapi.py`
+- Open http://127.0.0.1:29325/desk/ for the "papers on a desk" web GUI
 - `KANAPI_URL=http://127.0.0.1:29325/ ./kantui.py`
 - `KANAPI_URL=http://127.0.0.1:29325/ ./kancli.py --help`
 - `KANAPI_URL=http://127.0.0.1:29325/ flask --app tmgui run --port 29319`
+
+### Desk web GUI
+
+The desk (`desk/`, served by kanapi at `/desk/`) shows each list as a paper
+laid side by side on a desk.  Papers can be created on the fly, dragged into a
+new order, renamed, and "put away" into a drawer, optionally with a wakeup
+date so they come back to the desk automatically.  A list's `board_order`
+holds its place in the row; a null `board_order` means it is put away, like a
+closed card's null `list_order`.
+
+- Everything works by mouse (drag & drop papers and tasks) or keyboard: the
+  TUI keys (`n`/`e`/`m`/`wasd`/`c`) plus `N` new paper, `A`/`D` move paper,
+  `r` rename, `z` put away, `b` drawer, `p`/`P` print, `g` refresh.
+- The search box (`/`) is an *upsert*: type to find a task on visible (or
+  all) papers, and if it isn't found, Enter writes it on the current paper.
+- Print one paper (its printer button), marked papers (checkboxes), or the
+  whole desk via the browser's print dialog.
+
+Notes:
+- Lists that existed before the desk have no `board_order`, so they start in
+  the drawer; pull out the ones you want on the desk once.
+- Closing a task needs one list created with `--closed` (see below).
+- Task colors come from `category_color` (e.g.
+  `curl -X POST localhost:29325/categories/ -H 'Content-Type: application/json' -d '{"category_id": 1, "category_name": "Home", "category_color": "#4C8A64"}'`);
+  categories without a color get a stable fallback color.
 
 ### Recommended setup
 
@@ -75,7 +102,8 @@ Roadmap
 -------
 
 - packaging
-- server side board definition
+- ~~server side board definition~~ done: desk order/away state lives in `board_order`
+- desk paradigm in TUI and Android clients
 
 History
 -------

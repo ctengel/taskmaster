@@ -1,8 +1,11 @@
 """KanBan API and DataBase"""
 
 import datetime
+import pathlib
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Field, SQLModel, Session, create_engine, Relationship, select
 
 SQLITE_FILE = 'kanban.test.db'
@@ -60,6 +63,17 @@ class CardPatch(SQLModel):
     card_pom_tgt: Optional[int] = None
 
 
+class ListPatch(SQLModel):
+    """List Patch
+
+    board_order doubles as desk placement: an explicit null puts the list
+    "away" (off the desk), same idiom as closed cards getting a null list_order
+    """
+    list_name: str | None = None
+    board_order: Optional[int] = None
+    list_wakeup: Optional[datetime.date] = None
+
+
 class Card(CardBase, table=True):
     """An index card or task"""
     card_id: int = Field(primary_key = True)
@@ -108,6 +122,14 @@ def create_db_and_tables():
 
 app = FastAPI(
         title="TaskMaster KanBan API"
+        )
+
+# NOTE revisit allow_origins if auth is ever added
+app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
         )
 
 def get_session():
@@ -159,6 +181,23 @@ def card_list_order(card: Card) -> int:
     if not card.list_order:
         return 0
     return card.list_order
+
+def list_on_desk(list_: List) -> bool:
+    """Whether a list is "on the desk" (i.e. not put away)
+
+    A wakeup date governs if set; otherwise presence of board_order decides.
+    A NULL board_order means the list has been put away, but a wakeup date
+    that has arrived brings it back regardless.
+    """
+    if list_.list_wakeup:
+        return list_.list_wakeup <= datetime.date.today()
+    return list_.board_order is not None
+
+def list_board_order(list_: List) -> int:
+    """Given a list, return the board order; safe for sorting (nulls last)"""
+    if list_.board_order is None:
+        return MAX_ORDER + 1
+    return list_.board_order
 
 
 @app.get("/lists/{list_id}", response_model=ListWithCards)
@@ -277,10 +316,44 @@ def one_card(*, session: Session = Depends(get_session), card_id: int):
     return card
 
 @app.get("/lists/", response_model=list[List])
-def get_lists(*, session: Session = Depends(get_session)):
-    """Get all lists"""
+def get_lists(*, session: Session = Depends(get_session), away: Optional[bool] = None):
+    """Get all lists, optionally filtered by whether they are put away"""
     lists = session.exec(select(List)).all()
-    return lists
+    if away is not None:
+        lists = [x for x in lists if list_on_desk(x) != away]
+    return sorted(lists, key=list_board_order)
+
+@app.patch("/lists/{list_id}", response_model=List)
+def patch_list(*, session: Session = Depends(get_session), list_id: int, list_patch: ListPatch):
+    """Update certian fields in a list
+
+    Rename, reorder on the desk, put away (board_order=null), or set wakeup
+    """
+    list_ = session.get(List, list_id)
+    if not list_:
+        raise HTTPException(status_code=404)
+    list_data = list_patch.model_dump(exclude_unset=True)
+    list_.sqlmodel_update(list_data)
+    session.commit()
+    session.refresh(list_)
+    return list_
+
+@app.post("/lists/{list_id}/rebalance", response_model=ListMoveResult)
+def rebalance_list(*, session: Session = Depends(get_session), list_id: int):
+    """Evenly re-space the list_order of all cards on a list
+
+    Midpoint insertion in generate_list_order can exhaust the gap between two
+    adjacent cards; this spreads all cards back out over the full range.
+    """
+    list_ = session.get(List, list_id)
+    if not list_:
+        raise HTTPException(status_code=404)
+    cards = sorted(list_.cards, key=card_list_order)
+    step = (MAX_ORDER - MIN_ORDER) // (len(cards) + 1)
+    for index, card in enumerate(cards, start=1):
+        card.list_order = MIN_ORDER + index * step
+    session.commit()
+    return ListMoveResult()
 
 @app.get("/categories/", response_model=list[Category])
 def get_categories(*, session: Session = Depends(get_session)):
@@ -305,3 +378,8 @@ def move_list(*, session: Session = Depends(get_session), list_id: int, directio
         card.list_id = end_list.list_id
     session.commit()
     return ListMoveResult()  # TODO boring...
+
+# "Papers on a desk" web frontend; mounted after all API routes
+app.mount("/desk",
+          StaticFiles(directory=pathlib.Path(__file__).parent / "desk", html=True),
+          name="desk")
