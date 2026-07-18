@@ -13,6 +13,7 @@
   <span id="upsert-box">
     <input id="upsert-input" type="search" placeholder="Find or add a task (/)" autocomplete="off">
     <button id="upsert-scope" title="Toggle search scope">visible</button>
+    <ul id="upsert-results" hidden></ul>
   </span>
   <select id="category-filter" title="Filter by category (f cycles)">
     <option value="">All categories</option>
@@ -23,7 +24,6 @@
   <button id="print-btn">Print <kbd>P</kbd></button>
   <button id="refresh-btn" title="Refresh from server">&#10227; <kbd>g</kbd></button>
 </header>
-<ul id="upsert-results" hidden></ul>
 <main id="desk"></main>
 <aside id="drawer" hidden>
   <h2>Drawer</h2>

@@ -98,6 +98,7 @@ kbd {
 #upsert-box {
     display: flex;
     align-items: stretch;
+    position: relative;
 }
 
 #upsert-input {
@@ -139,8 +140,8 @@ kbd {
 #upsert-results {
     position: absolute;
     z-index: 40;
-    top: 2.6rem;
-    left: 8.5rem;
+    top: calc(100% + 2px);
+    left: 0;
     max-width: 26rem;
     margin: 0;
     padding: 0.25rem;
@@ -224,7 +225,7 @@ kbd {
     padding: 0.55rem 0.6rem 0.15rem;
     border-bottom: 2px solid var(--ink);
     cursor: grab;
-    touch-action: none; /* let pointer-event drags work on touch */
+    touch-action: pan-y; /* vertical touch scrolls; horizontal touch drags the paper */
 }
 
 .paper header h2 {
@@ -284,7 +285,7 @@ kbd {
     border-left: 4px solid var(--cat-color);
     font: 0.82rem/1.25 var(--mono);
     cursor: default;
-    touch-action: none; /* let pointer-event drags work on touch */
+    touch-action: pan-y; /* vertical touch scrolls; horizontal touch drags the card */
 }
 
 .card .name {
@@ -504,6 +505,47 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
+}
+
+/* ---------- touch: no hover, fat fingers ---------- */
+
+@media (hover: none) {
+    :root { --rule-height: 34px; }
+
+    .paper header .tools { opacity: 1; }
+
+    .paper header .tools button,
+    .card button {
+        font-size: 1rem;
+        padding: 6px;
+    }
+}
+
+/* ---------- small screens: one paper at a time ---------- */
+
+@media (max-width: 600px) {
+    #desk {
+        gap: 1rem;
+        padding: 1rem;
+        scroll-snap-type: x proximity;
+    }
+
+    .paper {
+        flex-basis: 88vw;
+        width: 88vw;
+        scroll-snap-align: center;
+    }
+
+    #upsert-box { flex: 1 1 100%; }
+
+    #upsert-input {
+        width: auto;
+        flex: 1;
+        max-width: none;
+    }
+
+    #toolbar kbd,
+    #help { display: none; }
 }
 
 /* ---------- print: selected papers as clean sheets ---------- */
